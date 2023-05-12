@@ -6,36 +6,82 @@
 # where s is the vector of the spatial coordinates and x are the parameters. \Gamma_N is the right
 # boundary of the spatial domain and \Gamma_D = \partial \Omega \setminus \Gamma_N.
 
+import os
+
 import numpy as np
-import scipy.linalg as la
+import math
+import numpy.linalg as la
+import matplotlib.pyplot as plt
 
 import ufl
+import gmsh
 import tqdm.autonotebook
 
 from mpi4py import MPI
-from dolfinx import mesh, fem
+from dolfinx import fem
 from dolfinx.fem import FunctionSpace
+from dolfinx.io import gmshio, XDMFFile
 from petsc4py.PETSc import ScalarType
-
+from scipy.sparse.linalg import eigsh
 import asfenicsx
 
-# Create mesh
-domain = mesh.create_unit_square(MPI.COMM_WORLD, 50, 50, mesh.CellType.quadrilateral)
+model_rank = 0
+gdim = 2
+dir = os.path.dirname(__file__)
 
-num_nodes = domain.geometry.x.shape[0]
+# Check if directory parametrizedPoisson exists if not create it
+if not os.path.exists(os.path.join(dir,"parametrizedPoisson")):
+    os.makedirs(os.path.join(dir,"parametrizedPoisson"))
+
+# Create mesh
+gmsh.initialize()
+boundary_Dirichlet, boundary_Neumann = [], []
+marker_dirichlet, marker_neumann = 1,2
+rectangle = gmsh.model.occ.addRectangle(0.0, 0.0, 0.0, 1.0, 1.0, tag = 1)
+gmsh.model.occ.synchronize()
+volumes = gmsh.model.getEntities(dim=gdim)
+gmsh.model.addPhysicalGroup(volumes[0][0], [volumes[0][1]], 1)
+boundaries = gmsh.model.getBoundary(volumes, oriented=False)
+for boundary in boundaries:
+    center_of_mass = gmsh.model.occ.getCenterOfMass(boundary[0], boundary[1])
+    if np.isclose(center_of_mass[0], 0.0):
+        boundary_Dirichlet.append(boundary[1])
+    elif np.isclose(center_of_mass[0], 1.0):
+        boundary_Neumann.append(boundary[1])
+    elif np.isclose(center_of_mass[1], 0.0):
+        boundary_Dirichlet.append(boundary[1])
+    elif np.isclose(center_of_mass[1], 1.0):
+        boundary_Dirichlet.append(boundary[1])
+gmsh.model.addPhysicalGroup(gdim-1, boundary_Dirichlet, marker_dirichlet)
+gmsh.model.addPhysicalGroup(gdim-1, boundary_Neumann, marker_neumann)
+gmsh.option.setNumber("Mesh.CharacteristicLengthMin", 0.02)
+gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 0.02)
+gmsh.option.setNumber("Mesh.Algorithm", 8)
+gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)
+gmsh.option.setNumber("Mesh.RecombineAll", 1)
+gmsh.model.mesh.generate(2)
+gmsh.model.mesh.setOrder(1)
+gmsh.write(os.path.join(dir,"parametrizedPoisson/mesh.msh"))
+
+gmsh_model_rank = 0
+mesh_comm = MPI.COMM_WORLD
+
+mesh, cell_markers, facet_markers = gmshio.model_to_mesh(gmsh.model, mesh_comm, gmsh_model_rank, gdim=gdim)
+
+num_nodes = mesh.geometry.x.shape[0]
 print("Number of nodes: ", num_nodes)
 
 # Create function space with standard P1 linear Lagrangian elements
-V = FunctionSpace(domain, ("CG", 1))
+V = FunctionSpace(mesh, ("CG", 1))
 
 # Define homogeneous Dirichlet boundary conditions  on \Gamma_D 
-tdim = domain.topology.dim
+tdim = mesh.topology.dim
 fdim = tdim - 1
 def boundary_Dirichlet(x):
-    return np.logical_and(np.logical_or(np.isclose(x[0], 0.0),np.isclose(x[1], 0.0),np.isclose(x[1], 1.0)), np.logical_not(np.isclose(x[0], 1.0)))
+    return np.logical_or(np.isclose(x[0], 0.0),np.isclose(x[1], 0.0),np.isclose(x[1], 1.0,atol=1e-1))
 
 # Use only the Dirichlet boundary
-dirichlet_dofs = fem.locate_dofs_geometrical(V, boundary_Dirichlet)
+dirichlet_dofs = fem.locate_dofs_topological(V, fdim, facet_markers.find(marker_dirichlet))
 bc_D = fem.dirichletbc(ScalarType(0), dirichlet_dofs, V)
 
 # Define variational problem, multiplying equation (1) with a test funciton v \in H^1_0(\Omega)
@@ -55,13 +101,13 @@ v = ufl.TestFunction(V)
 #       C(s,t) = exp(\beta^{-1} ||s-t||_1)
 # with \beta > 0.
 
-def calculate_eigenpairs(domain, beta):
-    vertices = domain.geometry.x
+def calculate_eigenpairs(mesh, beta):
+    vertices = mesh.geometry.x
     num_nodes = np.size(vertices,0)
 
     def correlation_operator(s, t, beta):
         # C(s,t) = exp(\beta^{-1} ||s-t||_1)
-        return np.exp(-np.sum(np.abs(s-t))/beta)
+        return np.exp(-la.norm(s-t, ord=1)/beta)
     
     # Calculate the correlation matrix for the mesh grid
     corr_mat = np.zeros((num_nodes, num_nodes))
@@ -69,52 +115,84 @@ def calculate_eigenpairs(domain, beta):
     for i in range(num_nodes):
         s = vertices[i,:tdim]
         for j in range(i,num_nodes):
-            progress.update(1)
             t = vertices[j,:tdim]
             # Evaluate only upper triangular part of the correlation matrix, because the correlation matrix is symmetric
             corr_mat[i, j] = corr_mat[j, i] = correlation_operator(s, t, beta)
+            progress.update(1)
 
     # Calculate the eigenpairs of the correlation matrix
-    eigenvalues, eigenvectors = la.eigh(corr_mat)
+    eigenvalues, eigenvectors = eigsh(corr_mat,k=m)
+
+    norm = la.norm(eigenvectors, axis=0)
+    eigenvectors = eigenvectors/norm
+    
+    # Plot eigenvalues on a log axis
+    plt.figure()
+    plt.plot(eigenvalues)
+    plt.yscale('log')
+    plt.xlabel("Eigenvalue Index")
+    plt.ylabel("Eigenvalue")
+    plt.title("Eigenvalues of the Correlation Matrix")
+    plt.savefig(os.path.join(dir,"parametrizedPoisson/eigenvalues.png"))
+    plt.close()
     return (eigenvalues, eigenvectors)
 
-# Dimensions of parameter space
-m = 50
-M=1
-
-(eigenvalues, eigenvectors)=calculate_eigenpairs(domain, 0.01)
-
 def kl_expansion(x):
-    log_a = np.zeros(num_nodes)
+    log_a =np.zeros(num_nodes)
     for i in range(m):
         log_a += x[i]*eigenvalues[i]*eigenvectors[:,i]
-    return log_a
+    return np.exp(log_a)
 
-f = fem.Constant(domain, ScalarType(1))
-linear = f * v * ufl.dx
+# Set source term to f(x) = 1
+f = fem.Function(V)
+f.interpolate(lambda x: 0*x[0]+1)
+
+# Set diffusion field coefficients to a(x) = 1
 a = fem.Function(V)
+a.name="Diffusion Field"
+a.interpolate(lambda x: 0*x[0]+1)
+
+linear = f * v * ufl.dx
 bilinear = ufl.dot(a*ufl.grad(u), ufl.grad(v))*ufl.dx
   
 def solve_problem(x):
+    
     # KL expansion based on eigenpairs of the correlation operator
-    # a.interpolate(np.exp(kl_expansion(x)))
-    a.vector[:] = np.exp(kl_expansion(x))
+    if x is not None:
+        a.vector[:] = kl_expansion(x)
     problem = fem.petsc.LinearProblem(bilinear, linear, bcs=[bc_D],petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
     uh = problem.solve()
     return uh
 
-def plot_solution(uh):
-    import pyvista
-    from dolfinx import plot
-    u_topology, u_cell_types, u_geometry = plot.create_vtk_mesh(V)
-    u_grid = pyvista.UnstructuredGrid(u_topology, u_cell_types, u_geometry)
-    u_grid.point_data["u"] = uh.x.array.real
-    u_grid.set_active_scalars("u")
-    u_plotter = pyvista.Plotter()
-    u_plotter.add_mesh(u_grid, show_edges=True)
-    u_plotter.view_xy()
-    if not pyvista.OFF_SCREEN:
-        u_plotter.show()
+def store_data(uh, filename="parametrizedPoisson/solution.xdmf"):
+        uh.name = "u"
+        with XDMFFile(mesh.comm,filename, "w") as xdmf:
+            xdmf.write_mesh(mesh)
+            xdmf.write_function(uh)
+
+def test_solver():
+    real = fem.Function(V)
+    real.interpolate(lambda x: (x[0]-0.5*x[0]**2)*np.sin(np.pi*x[1]))
+
+    f.interpolate(lambda x: (1.0-0.5*math.pi**2*(x[0]-2.0)*x[0])*np.sin(np.pi*x[1]))
+
+    uh = solve_problem(None)
+    
+    store_data(uh, "parametrizedPoisson/tests/solution.xdmf")
+    store_data(real, "parametrizedPoisson/tests/analytical.xdmf")
+
+    error_L2 = np.sqrt(mesh.comm.allreduce(fem.assemble_scalar(fem.form((uh - real)**2 * ufl.dx)), op=MPI.SUM))
+
+    if mesh.comm.rank == 0:
+        print(f"L2-error: {error_L2:.2e}")
+
+    # Compute values at mesh vertices
+    error_max = mesh.comm.allreduce(np.max(np.abs(uh.x.array-real.x.array)), op=MPI.MAX)
+    error_mean = mesh.comm.allreduce(np.mean(np.abs(uh.x.array-real.x.array)), op=MPI.SUM)/num_nodes
+    if mesh.comm.rank == 0:
+        print(f"Error_max: {error_max:.2e}")
+        print(f"Error_mean: {error_mean:.2e}")
+
 
 # The quantity of interest is the mean integral over the right boundary of the domain
 #                f(x) = \frac{1}{|\Gamma_N|} \int_{\Gamma_N} u(s,x) ds                             (6)
@@ -125,12 +203,28 @@ def plot_solution(uh):
 # the rest equal to zero.
 
 if __name__ == "__main__":
-    # Create random KL expansion
-    sampling = asfenicsx.Sampling(M,m)
+    # Validation of the solver using an unparametrized poisson problem
+    test_solver()
 
-    # Solve the problem for each sample
-    progress = tqdm.autonotebook.tqdm(desc="Solving PDE", total=M)
+    # Dimensions of parameter space
+    m = 50
+    M = 20
+
+    # Set the parameter values
+    samples = asfenicsx.Sampling(M,m)
+
+    (eigenvalues, eigenvectors)=calculate_eigenpairs(mesh, 0.1)
+
+    xdmf = XDMFFile(mesh.comm, "parametrizedPoisson/solutions.xdmf", "w")
+    xdmf.write_mesh(mesh)
+    progress = tqdm.autonotebook.tqdm(desc="Solving Problem", total=M)
     for i in range(M):
+        uh=solve_problem(samples.extract_sample(i))
+        uh.name = "u"
+        xdmf.write_function(uh,i+1)
+        xdmf.write_function(a,i+1)
         progress.update(1)
-        uh = solve_problem(sampling.samples[i,:])
-        plot_solution(uh)
+    xdmf.close()
+    
+
+

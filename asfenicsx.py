@@ -42,6 +42,9 @@ class Sampling:
             samples[i] = np.random.uniform(-1, 1, m)
         return samples
     
+    def extract_sample(self, index):
+        return self.samples[index,:]
+    
     def print_samples(self):
         print(f"Samples of the active subspace method: [M x m]=[{self.M},{self.m}] \n{self.samples}")
 
