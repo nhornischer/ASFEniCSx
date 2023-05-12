@@ -77,8 +77,6 @@ V = FunctionSpace(mesh, ("CG", 1))
 # Define homogeneous Dirichlet boundary conditions  on \Gamma_D 
 tdim = mesh.topology.dim
 fdim = tdim - 1
-def boundary_Dirichlet(x):
-    return np.logical_or(np.isclose(x[0], 0.0),np.isclose(x[1], 0.0),np.isclose(x[1], 1.0,atol=1e-1))
 
 # Use only the Dirichlet boundary
 dirichlet_dofs = fem.locate_dofs_topological(V, fdim, facet_markers.find(marker_dirichlet))
@@ -193,7 +191,6 @@ def test_solver():
         print(f"Error_max: {error_max:.2e}")
         print(f"Error_mean: {error_mean:.2e}")
 
-
 # The quantity of interest is the mean integral over the right boundary of the domain
 #                f(x) = \frac{1}{|\Gamma_N|} \int_{\Gamma_N} u(s,x) ds                             (6)
 # where |\Gamma_N| is the length of the right boundary of the domain \Omega.
@@ -201,6 +198,15 @@ def test_solver():
 #      f(x) \approx c^T M u(x)                                                                     (7)
 # and the components of c correspod to the mesh nodes on \Gamma_N that are equal to one with 
 # the rest equal to zero.
+
+def quantity_of_interest(uh):
+    c=fem.Function(V)
+    c.interpolate(lambda x: np.isclose(x[0],1.0).astype(int))
+    return fem.assemble_scalar(fem.form(ufl.inner(c,uh)*ufl.ds))
+
+def calculate_qof(x):
+    uh = solve_problem(x)
+    return quantity_of_interest(uh)
 
 if __name__ == "__main__":
     # Validation of the solver using an unparametrized poisson problem
@@ -225,6 +231,4 @@ if __name__ == "__main__":
         xdmf.write_function(a,i+1)
         progress.update(1)
     xdmf.close()
-    
-
 
