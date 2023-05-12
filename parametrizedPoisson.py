@@ -1,8 +1,8 @@
 # We consider the following Poisson Equation with parametrized, spatially varying coefficients.
 # On the computational unit domain \Omega = [0,1]^2, let u = u(s,x) be the solution to
 #       - \nabla_s \cdot (a(s,x) \nabla_s u(s,x)) = 1 in \Omega                                     (1)
-#                                          u(s,x) = 0 on \Gamma_D (Dirichlet boundary)                (2)
-#                                \nabla u \cdot n = 0 on \Gamma_N (Neumann boundary)         (3)
+#                                          u(s,x) = 0 on \Gamma_D (Dirichlet boundary)              (2)
+#                                \nabla u \cdot n = 0 on \Gamma_N (Neumann boundary)                (3)
 # where s is the vector of the spatial coordinates and x are the parameters. \Gamma_N is the right
 # boundary of the spatial domain and \Gamma_D = \partial \Omega \setminus \Gamma_N.
 
@@ -61,7 +61,7 @@ def calculate_eigenpairs(domain, beta):
 
     def correlation_operator(s, t, beta):
         # C(s,t) = exp(\beta^{-1} ||s-t||_1)
-        return np.exp(np.sum(np.abs(s-t))/beta)
+        return np.exp(-np.sum(np.abs(s-t))/beta)
     
     # Calculate the correlation matrix for the mesh grid
     corr_mat = np.zeros((num_nodes, num_nodes))
@@ -76,16 +76,13 @@ def calculate_eigenpairs(domain, beta):
 
     # Calculate the eigenpairs of the correlation matrix
     eigenvalues, eigenvectors = la.eigh(corr_mat)
-    sort_indices = np.argsort(eigenvalues)[::-1]
-    eigenvalues = eigenvalues[sort_indices]
-    eigenvectors = eigenvectors[:, sort_indices]
     return (eigenvalues, eigenvectors)
 
 # Dimensions of parameter space
 m = 50
 M=1
 
-(eigenvalues, eigenvectors)=calculate_eigenpairs(domain, 1.0)
+(eigenvalues, eigenvectors)=calculate_eigenpairs(domain, 0.01)
 
 def kl_expansion(x):
     log_a = np.zeros(num_nodes)
@@ -100,8 +97,8 @@ bilinear = ufl.dot(a*ufl.grad(u), ufl.grad(v))*ufl.dx
   
 def solve_problem(x):
     # KL expansion based on eigenpairs of the correlation operator
-    a.interpolate(np.exp(kl_expansion(x)))
-    
+    # a.interpolate(np.exp(kl_expansion(x)))
+    a.vector[:] = np.exp(kl_expansion(x))
     problem = fem.petsc.LinearProblem(bilinear, linear, bcs=[bc_D],petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
     uh = problem.solve()
     return uh
@@ -127,14 +124,6 @@ def plot_solution(uh):
 # and the components of c correspod to the mesh nodes on \Gamma_N that are equal to one with 
 # the rest equal to zero.
 
-def quantity_of_interest(uh):
-
-    M = fem.assemble_matrix(ufl.inner(u, v)*ufl.dx)
-
-    # TODO: Create vector c with ones on the right boundary and zeros elsewhere
-    c = np.zeros()
-    return ufl.dot(c, ufl.dot(M, uh.x))
-
 if __name__ == "__main__":
     # Create random KL expansion
     sampling = asfenicsx.Sampling(M,m)
@@ -144,6 +133,4 @@ if __name__ == "__main__":
     for i in range(M):
         progress.update(1)
         uh = solve_problem(sampling.samples[i,:])
-        print(uh.x.array.real)
-
-    plot_solution(uh)
+        plot_solution(uh)
