@@ -170,6 +170,7 @@ if __name__ == '__main__':
     """
     Active Subspace Construction
     """
+    print("Active Subspace")
     n= 2
     asfenicsx = ASFEniCSx(n, cost, samples)
 
@@ -180,33 +181,39 @@ if __name__ == '__main__':
     U, S = asfenicsx.random_sampling_algorithm()
 
     cost.get_gradient_method('FD')
-    U_FD, S_FD = asfenicsx.random_sampling_algorithm(info = True)
-    print(f"Numer of function evaluations for FD: {cost.number_of_calls()}")
+    U_FD, S_FD = asfenicsx.random_sampling_algorithm()
+    print(f"\tNumer of function evaluations for FD: {cost.number_of_calls()}")
+    print(f"\tError FD (EV, EW): {np.linalg.norm(U-U_FD)} , {np.linalg.norm(S-S_FD)}")
     cost.reset_number_of_calls()
 
     cost.interpolation(samples, overwrite = True)
     cost.get_gradient_method('I')
-    U_I, S_I = asfenicsx.random_sampling_algorithm(info = True)
-    print(f"Numer of function evaluations for integration: {cost.number_of_calls()}")
+    U_I, S_I = asfenicsx.random_sampling_algorithm()
+    print(f"\tNumer of function evaluations for integration: {cost.number_of_calls()}")
+    print(f"\tError I (EV, EW): {np.linalg.norm(U-U_I)} , {np.linalg.norm(S-S_I)}")
     cost.reset_number_of_calls()
 
     cost.interpolation(samples, interpolation_method = "LS", overwrite = True)
     cost.get_gradient_method('I')
-    U_LS, S_LS = asfenicsx.random_sampling_algorithm(info = True)
-    print(f"Numer of function evaluations for least squares integration: {cost.number_of_calls()}")
+    U_LS, S_LS = asfenicsx.random_sampling_algorithm()
+    print(f"\tNumer of function evaluations for least squares integration: {cost.number_of_calls()}")
+    print(f"\tError LS (EV, EW): {np.linalg.norm(U-U_LS)} , {np.linalg.norm(S-S_LS)}")
     cost.reset_number_of_calls()
 
     cost.interpolation(samples, overwrite = True, clustering = True)
     cost.get_gradient_method('I')
-    U_I_local, S_I_local = asfenicsx.random_sampling_algorithm(info = True)
-    print(f"Numer of function evaluations for integration: {cost.number_of_calls()}")
+    U_I_local, S_I_local = asfenicsx.random_sampling_algorithm()
+    print(f"\tNumer of function evaluations for integration: {cost.number_of_calls()}")
+    print(f"\tError I local (EV, EW): {np.linalg.norm(U-U_I_local)} , {np.linalg.norm(S-S_I_local)}")
     cost.reset_number_of_calls()
 
     cost.interpolation(samples, interpolation_method = "LS", overwrite = True, clustering = True)
     cost.get_gradient_method('I')
-    U_LS_local, S_LS_local = asfenicsx.random_sampling_algorithm(info = True)
-    print(f"Numer of function evaluations for least squares integration: {cost.number_of_calls()}")
+    U_LS_local, S_LS_local = asfenicsx.random_sampling_algorithm()
+    print(f"\tNumer of function evaluations for least squares integration: {cost.number_of_calls()}")
+    print(f"\tError LS local (EV, EW): {np.linalg.norm(U-U_LS_local)} , {np.linalg.norm(S-S_LS_local)}")
     cost.reset_number_of_calls()
+
     plt.close('all')
     fig= plt.figure("Active Subspace")
     X,Y = np.meshgrid(x_range, y_range)
@@ -222,41 +229,41 @@ if __name__ == '__main__':
     
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_FD[0,i]/2, U_FD[1,i]/2, width = 0.01, color = 'g', label="FD")
+            plt.arrow(0, 0, U_FD[0,i]/2, U_FD[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'g', label="FD")
         else:
-            plt.arrow(0, 0, U_FD[0,i]/2, U_FD[1,i]/2, width = 0.01, color = 'g')
+            plt.arrow(0, 0, U_FD[0,i]/2, U_FD[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'g')
     
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, color = 'b', label="Integration")
+            plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'b', label="Integration")
         else:
-            plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, color = 'b')
+            plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'b')
 
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, color = 'y', label="Least Squares")
+            plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'y', label="Least Squares")
         else:
-            plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, color = 'y')
+            plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'y')
 
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_I_local[0,i]/2, U_I_local[1,i]/2, width = 0.01, color = 'c', label="Local Integration")
+            plt.arrow(0, 0, U_I_local[0,i]/2, U_I_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'c', label="Local Integration")
         else:
-            plt.arrow(0, 0, U_I_local[0,i]/2, U_I_local[1,i]/2, width = 0.01, color = 'c')
+            plt.arrow(0, 0, U_I_local[0,i]/2, U_I_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'c')
 
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, color = 'm', label="Local Least Squares")
+            plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'm', label="Local Least Squares")
         else:
-            plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, color = 'm')
+            plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'm')
     
     plt.legend(loc='lower right')
     ax = plt.gca()
     ax.set_aspect('equal', adjustable='box')
     plt.savefig("figures/2D_active_subspace.svg")
-
+    plt.show()
     plt.figure("Active Subspace Eigenvalues")
-    plt.plot(S, 'r', linewidth = 2)
+    plt.plot(S, 'r', linewidth = 4)
     plt.plot(S_FD, 'g')
     plt.plot(S_I, 'b')
     plt.plot(S_LS, 'y')
@@ -265,4 +272,4 @@ if __name__ == '__main__':
     plt.legend(["Analytical", "FD", "Integration", "Least Squares", "Local Integration", "Local Least Squares"])
     plt.savefig("figures/2D_active_subspace_eigenvalues.svg")
 
-    plt.show()
+    
