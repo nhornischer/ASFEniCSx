@@ -1,0 +1,594 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module asfenicsx</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>asfenicsx</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/Users/niklashornischer/Documents/ASFEniCSx/asfenicsx.py">/Users/niklashornischer/Documents/ASFEniCSx/asfenicsx.py</a></font></td></tr></table>
+    <p></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="numpy.html">numpy</a><br>
+</td><td width="25%" valign=top><a href="scipy.html">scipy</a><br>
+</td><td width="25%" valign=top></td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="builtins.html#object">builtins.object</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="asfenicsx.html#ASFEniCSx">ASFEniCSx</a>
+</font></dt><dt><font face="helvetica, arial"><a href="asfenicsx.html#Functional">Functional</a>
+</font></dt><dt><font face="helvetica, arial"><a href="asfenicsx.html#Sampling">Sampling</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="asfenicsx.html#Clustering">Clustering</a>
+</font></dt></dl>
+</dd>
+</dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="ASFEniCSx">class <strong>ASFEniCSx</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#ASFEniCSx">ASFEniCSx</a>(n:&nbsp;int,&nbsp;function:&nbsp;asfenicsx.<a href="#Functional">Functional</a>,&nbsp;samples:&nbsp;asfenicsx.<a href="#Sampling">Sampling</a>)<br>
+&nbsp;<br>
+Class&nbsp;for&nbsp;constructing&nbsp;the&nbsp;active&nbsp;subspace&nbsp;in&nbsp;FeniCSx&nbsp;based&nbsp;on&nbsp;Constantine&nbsp;et&nbsp;al.&nbsp;<br>
+&nbsp;<br>
+The&nbsp;class&nbsp;is&nbsp;based&nbsp;on&nbsp;the&nbsp;paper&nbsp;by&nbsp;Constantine&nbsp;et&nbsp;al.&nbsp;The&nbsp;class&nbsp;is&nbsp;constructed<br>
+to&nbsp;be&nbsp;used&nbsp;with&nbsp;the&nbsp;FeniCSx&nbsp;library&nbsp;and&nbsp;requires&nbsp;a&nbsp;<a href="#Functional">Functional</a>&nbsp;and&nbsp;a&nbsp;<a href="#Sampling">Sampling</a>&nbsp;<a href="builtins.html#object">object</a>.<br>
+&nbsp;<br>
+Attributes:<br>
+public:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;n&nbsp;(int):&nbsp;Desired&nbsp;Dimension&nbsp;of&nbsp;the&nbsp;active&nbsp;subspace<br>
+&nbsp;&nbsp;&nbsp;&nbsp;function&nbsp;(<a href="#Functional">Functional</a>):&nbsp;<a href="#Functional">Functional</a>&nbsp;describing&nbsp;the&nbsp;quantity&nbsp;of&nbsp;interest<br>
+&nbsp;&nbsp;&nbsp;&nbsp;samples&nbsp;(<a href="#Sampling">Sampling</a>):&nbsp;<a href="#Sampling">Sampling</a>&nbsp;<a href="builtins.html#object">object</a>&nbsp;containing&nbsp;the&nbsp;samples<br>
+&nbsp;&nbsp;&nbsp;&nbsp;eigenvalues&nbsp;(numpy.ndarray):&nbsp;Eigenvalues&nbsp;of&nbsp;the&nbsp;covariance&nbsp;matrix&nbsp;(if&nbsp;created)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;eigenvectors&nbsp;(numpy.ndarray):&nbsp;Eigenvectors&nbsp;of&nbsp;the&nbsp;covariance&nbsp;matrix&nbsp;(if&nbsp;created)<br>
+&nbsp;<br>
+Methods:<br>
+public:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#ASFEniCSx-covariance">covariance</a>(info&nbsp;:&nbsp;bool,&nbsp;optional):&nbsp;Approximates&nbsp;the&nbsp;covariance&nbsp;matrix&nbsp;of&nbsp;the&nbsp;gradient&nbsp;of&nbsp;the&nbsp;function<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#ASFEniCSx-eigendecomposition">eigendecomposition</a>(matris&nbsp;:&nbsp;numpy.ndarray):&nbsp;Calculates&nbsp;the&nbsp;eigendecomposition&nbsp;of&nbsp;a&nbsp;matrix<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#ASFEniCSx-random_sampling_algorithm">random_sampling_algorithm</a>()&nbsp;:&nbsp;Performs&nbsp;the&nbsp;random&nbsp;sampling&nbsp;algorithm&nbsp;to&nbsp;construct&nbsp;the&nbsp;active&nbsp;subspace<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;from&nbsp;<a href="#ASFEniCSx">ASFEniCSx</a>&nbsp;import&nbsp;<a href="#ASFEniCSx">ASFEniCSx</a>,&nbsp;<a href="#Sampling">Sampling</a>,&nbsp;<a href="#Functional">Functional</a><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;def&nbsp;f(x):&nbsp;return&nbsp;x[0]**2&nbsp;+&nbsp;x[1]**2<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;def&nbsp;dfdx(x):&nbsp;return&nbsp;[2*x[0],&nbsp;2*x[1]]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;samples&nbsp;=&nbsp;<a href="#Sampling">Sampling</a>(100,&nbsp;2)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;function&nbsp;=&nbsp;<a href="#Functional">Functional</a>(2,&nbsp;f)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;function.get_derivative(dfdx)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;Optional&nbsp;but&nbsp;sets&nbsp;the&nbsp;derivative&nbsp;of&nbsp;the&nbsp;function&nbsp;to&nbsp;the&nbsp;analytical&nbsp;solution<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;asfenicsx&nbsp;=&nbsp;<a href="#ASFEniCSx">ASFEniCSx</a>(1,&nbsp;function,&nbsp;samples)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;U,&nbsp;S&nbsp;=&nbsp;asfenicsx.<a href="#ASFEniCSx-random_sampling_algorithm">random_sampling_algorithm</a>()<br>
+&nbsp;<br>
+Version:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;0.1<br>
+Contributors:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Niklas&nbsp;Hornischer&nbsp;(nh605@cam.ac.uk)<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="ASFEniCSx-__init__"><strong>__init__</strong></a>(self, n: int, function: asfenicsx.Functional, samples: asfenicsx.Sampling)</dt><dd><tt>Constructor&nbsp;for&nbsp;the&nbsp;<a href="#ASFEniCSx">ASFEniCSx</a>&nbsp;class<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;n&nbsp;(int):&nbsp;Desired&nbsp;Dimension&nbsp;of&nbsp;the&nbsp;active&nbsp;subspace<br>
+&nbsp;&nbsp;&nbsp;&nbsp;function&nbsp;(<a href="#Functional">Functional</a>):&nbsp;<a href="#Functional">Functional</a>&nbsp;describing&nbsp;the&nbsp;quantity&nbsp;of&nbsp;interest<br>
+&nbsp;&nbsp;&nbsp;&nbsp;samples&nbsp;(<a href="#Sampling">Sampling</a>):&nbsp;<a href="#Sampling">Sampling</a>&nbsp;<a href="builtins.html#object">object</a>&nbsp;containing&nbsp;the&nbsp;samples<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ValueError:&nbsp;If&nbsp;n&nbsp;is&nbsp;larger&nbsp;than&nbsp;the&nbsp;number&nbsp;of&nbsp;dimensions&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space</tt></dd></dl>
+
+<dl><dt><a name="ASFEniCSx-covariance"><strong>covariance</strong></a>(self, info=False)</dt><dd><tt>Approximates&nbsp;the&nbsp;covariance&nbsp;matrix&nbsp;of&nbsp;the&nbsp;gradient&nbsp;of&nbsp;the&nbsp;function<br>
+&nbsp;<br>
+The&nbsp;calculation&nbsp;of&nbsp;the&nbsp;gradient&nbsp;is&nbsp;defined&nbsp;directly&nbsp;in&nbsp;the&nbsp;functional.<br>
+The&nbsp;covariance&nbsp;matrix&nbsp;is&nbsp;approximated&nbsp;by&nbsp;the&nbsp;outer&nbsp;product&nbsp;of&nbsp;the&nbsp;gradient.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;info&nbsp;(bool,&nbsp;optional):&nbsp;If&nbsp;True,&nbsp;a&nbsp;progress&nbsp;bar&nbsp;is&nbsp;shown.&nbsp;Defaults&nbsp;to&nbsp;False.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;np.ndarray:&nbsp;Approximated&nbsp;covariance&nbsp;matrix&nbsp;with&nbsp;dimensions&nbsp;m&nbsp;x&nbsp;m</tt></dd></dl>
+
+<dl><dt><a name="ASFEniCSx-eigendecomposition"><strong>eigendecomposition</strong></a>(self, matrix: numpy.ndarray)</dt><dd><tt>Calculates&nbsp;the&nbsp;eigendecomposition&nbsp;of&nbsp;a&nbsp;matrix<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;matrix&nbsp;(numpy.ndarray):&nbsp;Matrix&nbsp;to&nbsp;be&nbsp;decomposed<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;np.ndarray:&nbsp;Matrix&nbsp;of&nbsp;eigenvectors&nbsp;stored&nbsp;in&nbsp;the&nbsp;columns<br>
+&nbsp;&nbsp;&nbsp;&nbsp;np.ndarray:&nbsp;Vector&nbsp;of&nbsp;eigenvalues</tt></dd></dl>
+
+<dl><dt><a name="ASFEniCSx-random_sampling_algorithm"><strong>random_sampling_algorithm</strong></a>(self, info=False)</dt><dd><tt>Calculates&nbsp;the&nbsp;active&nbsp;subspace&nbsp;using&nbsp;the&nbsp;random&nbsp;sampling&nbsp;algorithm&nbsp;of&nbsp;Constantine&nbsp;et&nbsp;al.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;info&nbsp;(bool,&nbsp;optional):&nbsp;If&nbsp;True,&nbsp;a&nbsp;progress&nbsp;bar&nbsp;is&nbsp;shown.&nbsp;Defaults&nbsp;to&nbsp;False.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;np.ndarray:&nbsp;Matrix&nbsp;of&nbsp;eigenvectors&nbsp;stored&nbsp;in&nbsp;the&nbsp;columns<br>
+&nbsp;&nbsp;&nbsp;&nbsp;np.ndarray:&nbsp;Vector&nbsp;of&nbsp;eigenvalues</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="Clustering">class <strong>Clustering</strong></a>(<a href="asfenicsx.html#Sampling">Sampling</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#Clustering">Clustering</a>(M:&nbsp;int,&nbsp;m:&nbsp;int,&nbsp;k:&nbsp;int,&nbsp;max_iter=1000)<br>
+&nbsp;<br>
+Class&nbsp;for&nbsp;creating&nbsp;clustered&nbsp;samples&nbsp;of&nbsp;a&nbsp;parameter&nbsp;space&nbsp;as&nbsp;a&nbsp;subclass&nbsp;of&nbsp;<a href="#Sampling">Sampling</a><br>
+&nbsp;<br>
+This&nbsp;class&nbsp;produces&nbsp;as&nbsp;sampling&nbsp;<a href="builtins.html#object">object</a>&nbsp;that&nbsp;contains&nbsp;clustered&nbsp;samples&nbsp;of&nbsp;a&nbsp;parameter&nbsp;space&nbsp;in&nbsp;addition<br>
+to&nbsp;the&nbsp;unclustered&nbsp;data.&nbsp;The&nbsp;clustering&nbsp;is&nbsp;done&nbsp;using&nbsp;the&nbsp;k-means&nbsp;algorithm.<br>
+&nbsp;<br>
+Attributes:<br>
+public:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;M&nbsp;(int):&nbsp;Number&nbsp;of&nbsp;samples<br>
+&nbsp;&nbsp;&nbsp;&nbsp;m&nbsp;(int):&nbsp;Dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space<br>
+&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;(int):&nbsp;Number&nbsp;of&nbsp;clusters<br>
+private:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_array&nbsp;(numpy.ndarray):&nbsp;Array&nbsp;containing&nbsp;the&nbsp;samples<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_max_iter&nbsp;(int):&nbsp;Maximum&nbsp;number&nbsp;of&nbsp;iterations&nbsp;for&nbsp;the&nbsp;k-means&nbsp;algorithm<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_centroids&nbsp;(numpy.ndarray):&nbsp;Array&nbsp;containing&nbsp;the&nbsp;centroids&nbsp;of&nbsp;the&nbsp;clusters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_clusters&nbsp;(list):&nbsp;List&nbsp;containing&nbsp;the&nbsp;clusters<br>
+&nbsp;<br>
+Methods:<br>
+public:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Clustering-detect">detect</a>():&nbsp;Detects&nbsp;the&nbsp;clusters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Clustering-assign_clusters">assign_clusters</a>(data&nbsp;:&nbsp;numpy.ndarray)&nbsp;-&gt;&nbsp;list:&nbsp;Assigns&nbsp;the&nbsp;samples&nbsp;to&nbsp;the&nbsp;clusters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Clustering-update_centroids">update_centroids</a>(clusters&nbsp;:&nbsp;list):&nbsp;Updates&nbsp;the&nbsp;centroids&nbsp;of&nbsp;the&nbsp;clusters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Clustering-plot">plot</a>(filename&nbsp;:&nbsp;str):&nbsp;Plots&nbsp;the&nbsp;clusters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Clustering-clusters">clusters</a>()&nbsp;-&gt;&nbsp;list:&nbsp;Returns&nbsp;the&nbsp;clusters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Clustering-centroids">centroids</a>()&nbsp;-&gt;&nbsp;numpy.ndarray:&nbsp;Returns&nbsp;the&nbsp;centroids&nbsp;of&nbsp;the&nbsp;clusters<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;kmeans&nbsp;=&nbsp;<a href="#Clustering">Clustering</a>(100,&nbsp;2,&nbsp;5)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;kmeans.<a href="#Clustering-detect">detect</a>()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;kmeans.<a href="#Clustering-plot">plot</a>("2D.svg")<br>
+&nbsp;<br>
+Version:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;0.1<br>
+Contributors:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Niklas&nbsp;Hornischer&nbsp;(nh605@cam.ac.uk)<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="asfenicsx.html#Clustering">Clustering</a></dd>
+<dd><a href="asfenicsx.html#Sampling">Sampling</a></dd>
+<dd><a href="builtins.html#object">builtins.object</a></dd>
+</dl>
+<hr>
+Methods defined here:<br>
+<dl><dt><a name="Clustering-__init__"><strong>__init__</strong></a>(self, M: int, m: int, k: int, max_iter=1000)</dt><dd><tt>Constructor&nbsp;of&nbsp;the&nbsp;<a href="#Clustering">Clustering</a>&nbsp;<a href="builtins.html#object">object</a><br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;M&nbsp;(int):&nbsp;Number&nbsp;of&nbsp;samples<br>
+&nbsp;&nbsp;&nbsp;&nbsp;m&nbsp;(int):&nbsp;Dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space<br>
+&nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;(int):&nbsp;Number&nbsp;of&nbsp;clusters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;max_iter&nbsp;(int,&nbsp;optional):&nbsp;Maximum&nbsp;number&nbsp;of&nbsp;iterations&nbsp;for&nbsp;the&nbsp;k-means&nbsp;algorithm.&nbsp;Default&nbsp;is&nbsp;1000.<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;k&nbsp;is&nbsp;not&nbsp;greater&nbsp;than&nbsp;0&nbsp;and&nbsp;less&nbsp;than&nbsp;M</tt></dd></dl>
+
+<dl><dt><a name="Clustering-assign_clusters"><strong>assign_clusters</strong></a>(self, data: numpy.ndarray)</dt><dd><tt>Assigns&nbsp;the&nbsp;samples&nbsp;to&nbsp;the&nbsp;clusters<br>
+&nbsp;<br>
+This&nbsp;method&nbsp;can&nbsp;be&nbsp;used&nbsp;to&nbsp;assign&nbsp;samples&nbsp;to&nbsp;the&nbsp;clusters&nbsp;and&nbsp;is&nbsp;called&nbsp;by&nbsp;the&nbsp;detect&nbsp;method.<br>
+It&nbsp;is&nbsp;possible&nbsp;to&nbsp;assign&nbsp;a&nbsp;arbitrary&nbsp;data&nbsp;set&nbsp;to&nbsp;the&nbsp;defined&nbsp;clusters,&nbsp;but&nbsp;in&nbsp;this&nbsp;case&nbsp;the&nbsp;sample&nbsp;space<br>
+is&nbsp;not&nbsp;updated.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;data&nbsp;(numpy.ndarray):&nbsp;Array&nbsp;containing&nbsp;the&nbsp;samples<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;list:&nbsp;List&nbsp;of&nbsp;numpy.ndarrays&nbsp;containing&nbsp;the&nbsp;clusters<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;centroids&nbsp;have&nbsp;not&nbsp;been&nbsp;initialized&nbsp;or&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;data&nbsp;does&nbsp;not&nbsp;match&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space</tt></dd></dl>
+
+<dl><dt><a name="Clustering-centroids"><strong>centroids</strong></a>(self)</dt><dd><tt>Returns&nbsp;the&nbsp;centroids&nbsp;of&nbsp;the&nbsp;clusters<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;numpy.ndarray:&nbsp;Array&nbsp;containing&nbsp;the&nbsp;centroids&nbsp;of&nbsp;the&nbsp;clusters</tt></dd></dl>
+
+<dl><dt><a name="Clustering-cluster_index"><strong>cluster_index</strong></a>(self, x: numpy.ndarray)</dt><dd><tt>Returns&nbsp;the&nbsp;index&nbsp;of&nbsp;the&nbsp;cluster&nbsp;to&nbsp;which&nbsp;the&nbsp;sample&nbsp;belongs<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;x&nbsp;(numpy.ndarray):&nbsp;Sample&nbsp;to&nbsp;be&nbsp;assigned&nbsp;to&nbsp;a&nbsp;cluster<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int:&nbsp;Index&nbsp;of&nbsp;the&nbsp;cluster&nbsp;to&nbsp;which&nbsp;the&nbsp;sample&nbsp;belongs<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;centroids&nbsp;have&nbsp;not&nbsp;been&nbsp;initialized<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;data&nbsp;does&nbsp;not&nbsp;match&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space</tt></dd></dl>
+
+<dl><dt><a name="Clustering-clusters"><strong>clusters</strong></a>(self)</dt><dd><tt>Returns&nbsp;the&nbsp;clusters<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;list:&nbsp;List&nbsp;of&nbsp;numpy.ndarrays&nbsp;containing&nbsp;the&nbsp;clusters</tt></dd></dl>
+
+<dl><dt><a name="Clustering-detect"><strong>detect</strong></a>(self)</dt><dd><tt>Detects&nbsp;the&nbsp;clusters&nbsp;using&nbsp;the&nbsp;k-means&nbsp;algorithm</tt></dd></dl>
+
+<dl><dt><a name="Clustering-plot"><strong>plot</strong></a>(self, filename='kmeans.svg')</dt><dd><tt>Plots&nbsp;the&nbsp;clusters&nbsp;in&nbsp;the&nbsp;parameter&nbsp;space<br>
+&nbsp;<br>
+To&nbsp;visualize&nbsp;the&nbsp;figures,&nbsp;use&nbsp;plt.show()&nbsp;after&nbsp;calling&nbsp;this&nbsp;method.&nbsp;<br>
+This&nbsp;is&nbsp;especially&nbsp;useful&nbsp;when&nbsp;plotting&nbsp;3D&nbsp;parameter&nbsp;spaces.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;filename&nbsp;(str,&nbsp;optional):&nbsp;Name&nbsp;of&nbsp;the&nbsp;file&nbsp;to&nbsp;save&nbsp;the&nbsp;plot&nbsp;to.&nbsp;Default&nbsp;is&nbsp;kmeans.svg<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space&nbsp;is&nbsp;greater&nbsp;than&nbsp;3</tt></dd></dl>
+
+<dl><dt><a name="Clustering-update_centroids"><strong>update_centroids</strong></a>(self, _clusters: list)</dt><dd><tt>Updates&nbsp;the&nbsp;centroids&nbsp;of&nbsp;the&nbsp;clusters<br>
+&nbsp;<br>
+This&nbsp;method&nbsp;can&nbsp;be&nbsp;used&nbsp;to&nbsp;update&nbsp;the&nbsp;centroids&nbsp;of&nbsp;the&nbsp;clusters&nbsp;and&nbsp;is&nbsp;called&nbsp;by&nbsp;the&nbsp;detect&nbsp;method.<br>
+It&nbsp;is&nbsp;not&nbsp;recommended&nbsp;to&nbsp;use&nbsp;this&nbsp;method&nbsp;on&nbsp;its&nbsp;own,&nbsp;as&nbsp;it&nbsp;does&nbsp;not&nbsp;assign&nbsp;the&nbsp;samples&nbsp;to&nbsp;the&nbsp;clusters,<br>
+but&nbsp;changes&nbsp;the&nbsp;centroids&nbsp;of&nbsp;the&nbsp;cluster.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_clusters&nbsp;(list):&nbsp;List&nbsp;of&nbsp;numpy.ndarrays&nbsp;containing&nbsp;the&nbsp;clusters</tt></dd></dl>
+
+<hr>
+Methods inherited from <a href="asfenicsx.html#Sampling">Sampling</a>:<br>
+<dl><dt><a name="Clustering-extract"><strong>extract</strong></a>(self, index: int)</dt><dd><tt>Extracts&nbsp;a&nbsp;single&nbsp;sample&nbsp;from&nbsp;the&nbsp;array<br>
+&nbsp;<br>
+Args:&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;index&nbsp;(int):&nbsp;Index&nbsp;of&nbsp;the&nbsp;sample&nbsp;to&nbsp;be&nbsp;extracted<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;numpy.ndarray:&nbsp;The&nbsp;sample&nbsp;at&nbsp;the&nbsp;given&nbsp;index<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;index&nbsp;is&nbsp;out&nbsp;of&nbsp;bounds</tt></dd></dl>
+
+<dl><dt><a name="Clustering-random_uniform"><strong>random_uniform</strong></a>(self, overwrite=False)</dt><dd><tt>Generates&nbsp;the&nbsp;samples&nbsp;using&nbsp;a&nbsp;uniform&nbsp;distribution<br>
+&nbsp;<br>
+Generates&nbsp;the&nbsp;samples&nbsp;using&nbsp;a&nbsp;uniform&nbsp;distribution&nbsp;with&nbsp;values&nbsp;between&nbsp;-1&nbsp;and&nbsp;1.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;overwrite&nbsp;(bool,&nbsp;optional):&nbsp;If&nbsp;True,&nbsp;overwrites&nbsp;the&nbsp;existing&nbsp;samples.&nbsp;Default&nbsp;is&nbsp;False.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AttributeError:&nbsp;If&nbsp;the&nbsp;samples&nbsp;already&nbsp;exist&nbsp;and&nbsp;overwrite&nbsp;is&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="Clustering-samples"><strong>samples</strong></a>(self)</dt><dd><tt>Returns&nbsp;the&nbsp;sampling&nbsp;array<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;numpy.ndarray:&nbsp;The&nbsp;sampling&nbsp;array</tt></dd></dl>
+
+<hr>
+Data descriptors inherited from <a href="asfenicsx.html#Sampling">Sampling</a>:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="Functional">class <strong>Functional</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#Functional">Functional</a>(m:&nbsp;int,&nbsp;f:&nbsp;&amp;lt;built-in&nbsp;function&nbsp;callable&amp;gt;)<br>
+&nbsp;<br>
+Class&nbsp;for&nbsp;constructing&nbsp;a&nbsp;functional,&nbsp;in&nbsp;order&nbsp;to&nbsp;evaluate&nbsp;a&nbsp;function,&nbsp;its&nbsp;derivative&nbsp;and&nbsp;interpolated&nbsp;values.<br>
+&nbsp;<br>
+Attributes:<br>
+public:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;m&nbsp;(int):&nbsp;Dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space<br>
+&nbsp;&nbsp;&nbsp;&nbsp;f&nbsp;(function):&nbsp;Function&nbsp;to&nbsp;be&nbsp;evaluated<br>
+&nbsp;&nbsp;&nbsp;&nbsp;use_clusters&nbsp;(boolean):&nbsp;If&nbsp;True,&nbsp;the&nbsp;interpolant&nbsp;will&nbsp;be&nbsp;evaluated&nbsp;using&nbsp;the&nbsp;clusters&nbsp;of&nbsp;the&nbsp;clustering&nbsp;<a href="builtins.html#object">object</a>&nbsp;(if&nbsp;created)<br>
+private:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_number_of_calls&nbsp;(int):&nbsp;Number&nbsp;of&nbsp;calls&nbsp;to&nbsp;the&nbsp;function<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_derivative&nbsp;(callable):&nbsp;Analytical&nbsp;derivative&nbsp;of&nbsp;the&nbsp;function&nbsp;(if&nbsp;created)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_interpolant&nbsp;(callable):&nbsp;Interpolant&nbsp;of&nbsp;the&nbsp;function&nbsp;(if&nbsp;created)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_interpolants&nbsp;(list):&nbsp;List&nbsp;of&nbsp;callable&nbsp;interpolants&nbsp;of&nbsp;the&nbsp;function&nbsp;(if&nbsp;created)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_derivatives&nbsp;(list):&nbsp;List&nbsp;of&nbsp;callable&nbsp;derivatives&nbsp;of&nbsp;the&nbsp;function&nbsp;(if&nbsp;created)<br>
+&nbsp;<br>
+Methods:<br>
+public:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-number_of_calls">number_of_calls</a>()&nbsp;-&gt;&nbsp;int:&nbsp;Returns&nbsp;the&nbsp;number&nbsp;of&nbsp;calls&nbsp;to&nbsp;the&nbsp;function<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-reset_number_of_calls">reset_number_of_calls</a>():&nbsp;Resets&nbsp;the&nbsp;number&nbsp;of&nbsp;calls&nbsp;to&nbsp;the&nbsp;function<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-evaluate">evaluate</a>(x&nbsp;:&nbsp;numpy.ndarrray)&nbsp;-&gt;&nbsp;float:&nbsp;Evaluates&nbsp;the&nbsp;function&nbsp;at&nbsp;the&nbsp;point&nbsp;x<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-get_derivative">get_derivative</a>(dfdx&nbsp;:&nbsp;callable):&nbsp;Set&nbsp;the&nbsp;analytical&nbsp;derivative&nbsp;of&nbsp;the&nbsp;function<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-get_gradient_method">get_gradient_method</a>(method&nbsp;:&nbsp;str):&nbsp;Sets&nbsp;the&nbsp;method&nbsp;for&nbsp;calculating&nbsp;the&nbsp;gradient<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-interpolation">interpolation</a>(samling&nbsp;:&nbsp;<a href="#Sampling">Sampling</a>):&nbsp;Calculates&nbsp;the&nbsp;interpolant&nbsp;and&nbsp;its&nbsp;derivative&nbsp;of&nbsp;the&nbsp;given&nbsp;function<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-multivariate_interpolation">multivariate_interpolation</a>(samples&nbsp;:&nbsp;numpy.ndarray,&nbsp;values&nbsp;:&nbsp;numpy.ndarray)&nbsp;-&gt;&nbsp;numpy.ndarray,&nbsp;numpy.ndarray:&nbsp;Calculates&nbsp;the&nbsp;coefficients&nbsp;and&nbsp;exponents&nbsp;of&nbsp;the&nbsp;interpolant<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-multivariate_polynomial">multivariate_polynomial</a>(coefficients&nbsp;:&nbsp;numpy.ndarray,&nbsp;exponents&nbsp;:&nbsp;numpy.ndarray)&nbsp;-&gt;&nbsp;callable:&nbsp;Returns&nbsp;a&nbsp;callable&nbsp;function&nbsp;of&nbsp;the&nbsp;interpolant<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-multivariate_polynomial_derivative">multivariate_polynomial_derivative</a>(coefficients&nbsp;:&nbsp;numpy.ndarray,&nbsp;exponents&nbsp;:&nbsp;numpy.ndarray)&nbsp;-&gt;&nbsp;callable:&nbsp;Returns&nbsp;a&nbsp;callable&nbsp;function&nbsp;of&nbsp;the&nbsp;derivative&nbsp;of&nbsp;the&nbsp;interpolant<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-evaluate_interpolant">evaluate_interpolant</a>(x&nbsp;:&nbsp;numpy.ndarray)&nbsp;-&gt;&nbsp;float:&nbsp;Evaluates&nbsp;the&nbsp;interpolant&nbsp;at&nbsp;the&nbsp;point&nbsp;x<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Functional-gradient">gradient</a>(x&nbsp;:&nbsp;numpy.ndarray)&nbsp;-&gt;&nbsp;numpy.ndarray:&nbsp;Calculates&nbsp;the&nbsp;gradient&nbsp;of&nbsp;the&nbsp;function&nbsp;at&nbsp;the&nbsp;point&nbsp;x<br>
+&nbsp;<br>
+private:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_finite_differences(x&nbsp;:&nbsp;numpy.ndarray,&nbsp;h&nbsp;:&nbsp;float)&nbsp;-&gt;&nbsp;numpy.ndarray:&nbsp;Calculates&nbsp;the&nbsp;finite&nbsp;difference&nbsp;of&nbsp;the&nbsp;function&nbsp;at&nbsp;the&nbsp;point&nbsp;x<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;def&nbsp;f(x):&nbsp;return&nbsp;x[0]**2&nbsp;+&nbsp;x[1]**2<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;func&nbsp;=&nbsp;<a href="#Functional">Functional</a>(2,&nbsp;f)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;x&nbsp;=&nbsp;np.array([1,2])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;func.<a href="#Functional-evaluate">evaluate</a>(x)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;5<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;func.<a href="#Functional-get_derivative">get_derivative</a>(lambda&nbsp;x:&nbsp;[2*x[0],&nbsp;2*x[1]])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;func.<a href="#Functional-get_gradient_method">get_gradient_method</a>("A")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;func.<a href="#Functional-gradient">gradient</a>(x)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;array([2,&nbsp;4])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;func.<a href="#Functional-interpolation">interpolation</a>(<a href="#Sampling">Sampling</a>(10,&nbsp;2),&nbsp;interpolation_method="LS")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;func.<a href="#Functional-get_gradient_method">get_gradient_method</a>("I")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;func.<a href="#Functional-evaluate_interpolant">evaluate_interpolant</a>(x)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;4.9999<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;func.<a href="#Functional-gradient">gradient</a>(x)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;array([1.9999,&nbsp;3.9999])<br>
+&nbsp;<br>
+Version:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;0.1<br>
+Contributors:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Niklas&nbsp;Hornischer&nbsp;(nh605@cam.ac.uk)<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="Functional-__init__"><strong>__init__</strong></a>(self, m: int, f: &lt;built-in function callable&gt;)</dt><dd><tt>Constructor&nbsp;of&nbsp;the&nbsp;<a href="#Functional">Functional</a>&nbsp;class<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;m&nbsp;(int):&nbsp;Dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space<br>
+&nbsp;&nbsp;&nbsp;&nbsp;f&nbsp;(function):&nbsp;Function&nbsp;to&nbsp;be&nbsp;evaluated&nbsp;&nbsp;<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space&nbsp;is&nbsp;not&nbsp;positive<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;function&nbsp;is&nbsp;not&nbsp;callable</tt></dd></dl>
+
+<dl><dt><a name="Functional-evaluate"><strong>evaluate</strong></a>(self, x: numpy.ndarray)</dt><dd><tt>Evaluates&nbsp;the&nbsp;function&nbsp;at&nbsp;a&nbsp;given&nbsp;point<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;x&nbsp;(numpy.ndarray):&nbsp;Point&nbsp;at&nbsp;which&nbsp;the&nbsp;function&nbsp;is&nbsp;evaluated<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;float:&nbsp;Value&nbsp;of&nbsp;the&nbsp;function&nbsp;at&nbsp;x<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;dimension&nbsp;of&nbsp;x&nbsp;does&nbsp;not&nbsp;match&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space</tt></dd></dl>
+
+<dl><dt><a name="Functional-evaluate_interpolant"><strong>evaluate_interpolant</strong></a>(self, x: numpy.ndarray, sampling=None)</dt><dd><tt>Evaluates&nbsp;the&nbsp;interpolant&nbsp;at&nbsp;the&nbsp;given&nbsp;point,&nbsp;either&nbsp;locally&nbsp;or&nbsp;globally.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;x&nbsp;(numpy.ndarray):&nbsp;Point&nbsp;at&nbsp;which&nbsp;the&nbsp;interpolant&nbsp;is&nbsp;evaluated<br>
+&nbsp;&nbsp;&nbsp;&nbsp;sampling&nbsp;(<a href="#Sampling">Sampling</a>,&nbsp;optional):&nbsp;<a href="#Sampling">Sampling</a>&nbsp;<a href="builtins.html#object">object</a>&nbsp;that&nbsp;includes&nbsp;the&nbsp;clusters.&nbsp;Defaults&nbsp;to&nbsp;None.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;If&nbsp;this&nbsp;argument&nbsp;is&nbsp;not&nbsp;none,&nbsp;the&nbsp;evaluation&nbsp;is&nbsp;done&nbsp;locally.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;float:&nbsp;Value&nbsp;of&nbsp;the&nbsp;interpolant&nbsp;at&nbsp;the&nbsp;given&nbsp;point<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;point&nbsp;is&nbsp;not&nbsp;equal&nbsp;to&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;interpolant<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ValueError:&nbsp;If&nbsp;no&nbsp;interpolant&nbsp;is&nbsp;found</tt></dd></dl>
+
+<dl><dt><a name="Functional-get_derivative"><strong>get_derivative</strong></a>(self, dfdx: &lt;built-in function callable&gt;)</dt><dd><tt>Sets&nbsp;the&nbsp;explicitly&nbsp;formulated&nbsp;derivative&nbsp;of&nbsp;the&nbsp;function<br>
+&nbsp;<br>
+This&nbsp;method&nbsp;can&nbsp;be&nbsp;used&nbsp;to&nbsp;set&nbsp;the&nbsp;derivative&nbsp;of&nbsp;the&nbsp;functional&nbsp;<a href="builtins.html#object">object</a>&nbsp;to&nbsp;<br>
+a&nbsp;explicitly&nbsp;formulated&nbsp;function.&nbsp;This&nbsp;can&nbsp;either&nbsp;be&nbsp;a&nbsp;analytical&nbsp;form&nbsp;or<br>
+an&nbsp;interpolated&nbsp;function.<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;derivative&nbsp;is&nbsp;not&nbsp;callable</tt></dd></dl>
+
+<dl><dt><a name="Functional-get_gradient_method"><strong>get_gradient_method</strong></a>(self, method: str)</dt><dd><tt>Sets&nbsp;the&nbsp;method&nbsp;used&nbsp;to&nbsp;calculate&nbsp;the&nbsp;gradient&nbsp;of&nbsp;the&nbsp;function<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;method&nbsp;(str):&nbsp;Method&nbsp;used&nbsp;to&nbsp;calculate&nbsp;the&nbsp;gradient.&nbsp;Possible&nbsp;values&nbsp;are<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'FD'&nbsp;(finite&nbsp;differences),&nbsp;'I'&nbsp;(interpolation)&nbsp;and&nbsp;'A'&nbsp;(analytical)<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ValueError:&nbsp;If&nbsp;the&nbsp;method&nbsp;is&nbsp;not&nbsp;valid<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ValueError:&nbsp;If&nbsp;the&nbsp;analytical&nbsp;method&nbsp;is&nbsp;used&nbsp;but&nbsp;no&nbsp;derivative&nbsp;has&nbsp;been&nbsp;set</tt></dd></dl>
+
+<dl><dt><a name="Functional-gradient"><strong>gradient</strong></a>(self, x: numpy.ndarray, sampling=None)</dt></dl>
+
+<dl><dt><a name="Functional-interpolation"><strong>interpolation</strong></a>(self, sampling: asfenicsx.Sampling, order=2, interpolation_method='default', overwrite=False, clustering=False)</dt><dd><tt>Calculates&nbsp;a&nbsp;polynomial&nbsp;interpolant&nbsp;(globally&nbsp;or&nbsp;locally)&nbsp;based&nbsp;on&nbsp;given&nbsp;samples.<br>
+&nbsp;<br>
+This&nbsp;function&nbsp;calculates&nbsp;a&nbsp;polynomial&nbsp;based&nbsp;on&nbsp;the&nbsp;multivariate&nbsp;interpolation&nbsp;function<br>
+and&nbsp;sets&nbsp;the&nbsp;interpolant&nbsp;and&nbsp;its&nbsp;derivative&nbsp;as&nbsp;attributes&nbsp;of&nbsp;the&nbsp;functional&nbsp;<a href="builtins.html#object">object</a>.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;sampling&nbsp;(<a href="#Sampling">Sampling</a>):&nbsp;<a href="#Sampling">Sampling</a>&nbsp;<a href="builtins.html#object">object</a>&nbsp;containing&nbsp;the&nbsp;samples<br>
+&nbsp;&nbsp;&nbsp;&nbsp;order&nbsp;(int,&nbsp;optional):&nbsp;Order&nbsp;of&nbsp;the&nbsp;polynomial&nbsp;interpolant.&nbsp;Defaults&nbsp;to&nbsp;2.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;interpolation_method&nbsp;(str,&nbsp;optional):&nbsp;Method&nbsp;used&nbsp;to&nbsp;calculate&nbsp;the&nbsp;interpolant.&nbsp;Defaults&nbsp;to&nbsp;'default'.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Possible&nbsp;values&nbsp;are&nbsp;'default',&nbsp;'LS'&nbsp;(least&nbsp;squares).<br>
+&nbsp;&nbsp;&nbsp;&nbsp;overwrite&nbsp;(bool,&nbsp;optional):&nbsp;If&nbsp;True,&nbsp;the&nbsp;interpolant&nbsp;will&nbsp;be&nbsp;overwritten&nbsp;if&nbsp;it&nbsp;has&nbsp;already&nbsp;been&nbsp;calculated.&nbsp;Defaults&nbsp;to&nbsp;False.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;clustering&nbsp;(bool,&nbsp;optional):&nbsp;If&nbsp;True,&nbsp;the&nbsp;samples&nbsp;will&nbsp;be&nbsp;clustered&nbsp;and&nbsp;multiple&nbsp;local&nbsp;interpolants&nbsp;will&nbsp;be&nbsp;calculated.&nbsp;Defaults&nbsp;to&nbsp;False.<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;samples&nbsp;does&nbsp;not&nbsp;match&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ValueError:&nbsp;If&nbsp;the&nbsp;samples&nbsp;<a href="builtins.html#object">object</a>&nbsp;does&nbsp;not&nbsp;contain&nbsp;any&nbsp;clusters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ValueError:&nbsp;If&nbsp;the&nbsp;interpolant&nbsp;has&nbsp;already&nbsp;been&nbsp;calculated&nbsp;but&nbsp;overwrite&nbsp;is&nbsp;set&nbsp;to&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="Functional-multivariate_interpolation"><strong>multivariate_interpolation</strong></a>(self, samples: numpy.ndarray, values: numpy.ndarray, order=2, method='default')</dt><dd><tt>Calculates&nbsp;the&nbsp;coefficients&nbsp;of&nbsp;a&nbsp;multivariate&nbsp;polynomial&nbsp;interpolation.<br>
+&nbsp;<br>
+This&nbsp;method&nbsp;can&nbsp;be&nbsp;used&nbsp;to&nbsp;construct&nbsp;a&nbsp;multivariate&nbsp;polynomial&nbsp;for&nbsp;arbitrary&nbsp;samples&nbsp;and&nbsp;data.<br>
+The&nbsp;usage&nbsp;is&nbsp;not&nbsp;restricted&nbsp;to&nbsp;the&nbsp;functional&nbsp;class&nbsp;but&nbsp;can&nbsp;be&nbsp;used&nbsp;for&nbsp;any&nbsp;multivariate&nbsp;polynomial&nbsp;interpolation.<br>
+If&nbsp;no&nbsp;values&nbsp;are&nbsp;given,&nbsp;the&nbsp;values&nbsp;are&nbsp;calculated&nbsp;by&nbsp;evaluating&nbsp;the&nbsp;function&nbsp;at&nbsp;the&nbsp;given&nbsp;samples.<br>
+&nbsp;<br>
+This&nbsp;method&nbsp;is&nbsp;not&nbsp;computationally&nbsp;efficient&nbsp;since&nbsp;it&nbsp;explicitly&nbsp;constructs&nbsp;a&nbsp;possibly&nbsp;dense&nbsp;matrix<br>
+with&nbsp;high&nbsp;computational&nbsp;costs&nbsp;to&nbsp;solve&nbsp;the&nbsp;resulting&nbsp;linear&nbsp;system&nbsp;of&nbsp;equations.<br>
+&nbsp;<br>
+The&nbsp;polynomial&nbsp;is&nbsp;of&nbsp;the&nbsp;form<br>
+&nbsp;&nbsp;&nbsp;&nbsp;f(x)&nbsp;=&nbsp;sum_{i=1}^{n}&nbsp;c_i&nbsp;*&nbsp;prod_{j=1}^{m}&nbsp;x_j^{e_{ij}}<br>
+where&nbsp;n&nbsp;is&nbsp;the&nbsp;number&nbsp;of&nbsp;coefficients,&nbsp;m&nbsp;is&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space,<br>
+c_i&nbsp;are&nbsp;the&nbsp;coefficients&nbsp;and&nbsp;e_{ij}&nbsp;are&nbsp;the&nbsp;exponents&nbsp;of&nbsp;the&nbsp;summands.<br>
+The&nbsp;exponents&nbsp;have&nbsp;a&nbsp;maximal&nbsp;total&nbsp;order&nbsp;of&nbsp;the&nbsp;given&nbsp;order,&nbsp;meaning&nbsp;that<br>
+the&nbsp;sum&nbsp;of&nbsp;the&nbsp;exponents&nbsp;of&nbsp;each&nbsp;summand&nbsp;is&nbsp;smaller&nbsp;or&nbsp;equal&nbsp;to&nbsp;the&nbsp;given&nbsp;order.<br>
+&nbsp;<br>
+The&nbsp;coefficients&nbsp;are&nbsp;calculated&nbsp;by&nbsp;solving&nbsp;the&nbsp;linear&nbsp;system&nbsp;of&nbsp;equations<br>
+&nbsp;&nbsp;&nbsp;&nbsp;A&nbsp;*&nbsp;c&nbsp;=&nbsp;v<br>
+where&nbsp;A&nbsp;is&nbsp;a&nbsp;matrix&nbsp;with&nbsp;the&nbsp;samples&nbsp;as&nbsp;rows&nbsp;and&nbsp;the&nbsp;summands&nbsp;as&nbsp;columns,&nbsp;c&nbsp;is&nbsp;a&nbsp;vector&nbsp;of&nbsp;the&nbsp;coefficients<br>
+and&nbsp;v&nbsp;is&nbsp;a&nbsp;vector&nbsp;of&nbsp;the&nbsp;values&nbsp;of&nbsp;the&nbsp;function&nbsp;at&nbsp;the&nbsp;samples.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;samples&nbsp;(numpy.ndarray):&nbsp;Samples&nbsp;at&nbsp;which&nbsp;the&nbsp;function&nbsp;is&nbsp;evaluated<br>
+&nbsp;&nbsp;&nbsp;&nbsp;values&nbsp;(numpy.ndarray):&nbsp;Values&nbsp;of&nbsp;the&nbsp;function&nbsp;at&nbsp;the&nbsp;samples<br>
+&nbsp;&nbsp;&nbsp;&nbsp;order&nbsp;(int):&nbsp;Order&nbsp;of&nbsp;the&nbsp;polynomial<br>
+&nbsp;&nbsp;&nbsp;&nbsp;method&nbsp;(str):&nbsp;Method&nbsp;used&nbsp;to&nbsp;calculate&nbsp;the&nbsp;coefficients.&nbsp;Possible&nbsp;values&nbsp;are<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'default'&nbsp;and&nbsp;'LS'&nbsp;(uses&nbsp;a&nbsp;least&nbsp;squares&nbsp;approximation)<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;np.ndarray:&nbsp;Coefficients&nbsp;of&nbsp;the&nbsp;multivariate&nbsp;polynomial&nbsp;interpolation<br>
+&nbsp;&nbsp;&nbsp;&nbsp;np.ndarray:&nbsp;Exponents&nbsp;of&nbsp;the&nbsp;summands<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;number&nbsp;of&nbsp;samples&nbsp;and&nbsp;values&nbsp;is&nbsp;not&nbsp;equal<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;number&nbsp;of&nbsp;coefficients&nbsp;is&nbsp;greater&nbsp;than&nbsp;the&nbsp;number&nbsp;of&nbsp;samples</tt></dd></dl>
+
+<dl><dt><a name="Functional-multivariate_polynomial"><strong>multivariate_polynomial</strong></a>(self, coefficients: numpy.ndarray, exponents: numpy.ndarray)</dt><dd><tt>Constructs&nbsp;a&nbsp;multivariate&nbsp;polynomial&nbsp;from&nbsp;the&nbsp;coefficients&nbsp;and&nbsp;exponents&nbsp;of&nbsp;the&nbsp;summands.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;coefficients&nbsp;(numpy.ndarray):&nbsp;Coefficients&nbsp;of&nbsp;the&nbsp;summands<br>
+&nbsp;&nbsp;&nbsp;&nbsp;exponents&nbsp;(numpy.ndarray):&nbsp;Exponents&nbsp;of&nbsp;the&nbsp;summands<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;function:&nbsp;Multivariate&nbsp;polynomial</tt></dd></dl>
+
+<dl><dt><a name="Functional-multivariate_polynomial_derivative"><strong>multivariate_polynomial_derivative</strong></a>(self, coefficients: numpy.ndarray, exponents: numpy.ndarray)</dt><dd><tt>Constructs&nbsp;the&nbsp;derivative&nbsp;of&nbsp;a&nbsp;multivariate&nbsp;polynomial&nbsp;from&nbsp;the&nbsp;coefficients&nbsp;and&nbsp;exponents&nbsp;of&nbsp;the&nbsp;summands.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;coefficients&nbsp;(numpy.ndarray):&nbsp;Coefficients&nbsp;of&nbsp;the&nbsp;summands<br>
+&nbsp;&nbsp;&nbsp;&nbsp;exponents&nbsp;(numpy.ndarray):&nbsp;Exponents&nbsp;of&nbsp;the&nbsp;summands<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;function:&nbsp;Derivative&nbsp;of&nbsp;the&nbsp;multivariate&nbsp;polynomial</tt></dd></dl>
+
+<dl><dt><a name="Functional-number_of_calls"><strong>number_of_calls</strong></a>(self)</dt><dd><tt>Returns&nbsp;the&nbsp;number&nbsp;of&nbsp;calls&nbsp;to&nbsp;the&nbsp;function<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int:&nbsp;Number&nbsp;of&nbsp;calls&nbsp;to&nbsp;the&nbsp;function</tt></dd></dl>
+
+<dl><dt><a name="Functional-reset_number_of_calls"><strong>reset_number_of_calls</strong></a>(self)</dt><dd><tt>Resets&nbsp;the&nbsp;number&nbsp;of&nbsp;calls&nbsp;to&nbsp;the&nbsp;function</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="Sampling">class <strong>Sampling</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt><a href="#Sampling">Sampling</a>(M:&nbsp;int,&nbsp;m:&nbsp;int)<br>
+&nbsp;<br>
+Class&nbsp;for&nbsp;sampling&nbsp;the&nbsp;domain&nbsp;of&nbsp;a&nbsp;parameter&nbsp;space<br>
+&nbsp;<br>
+This&nbsp;class&nbsp;produces&nbsp;an&nbsp;<a href="builtins.html#object">object</a>&nbsp;containing&nbsp;the&nbsp;samples&nbsp;of&nbsp;the&nbsp;domain&nbsp;as&nbsp;well<br>
+as&nbsp;the&nbsp;number&nbsp;of&nbsp;samples&nbsp;and&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space.<br>
+&nbsp;<br>
+Per&nbsp;default&nbsp;the&nbsp;domain&nbsp;is&nbsp;sampled&nbsp;using&nbsp;a&nbsp;uniform&nbsp;distribution&nbsp;with&nbsp;values<br>
+between&nbsp;-1&nbsp;and&nbsp;1.<br>
+&nbsp;<br>
+Important&nbsp;remarks:&nbsp;No&nbsp;mather&nbsp;what&nbsp;probability&nbsp;density&nbsp;function&nbsp;is&nbsp;used&nbsp;to&nbsp;<br>
+generate&nbsp;the&nbsp;samples,&nbsp;the&nbsp;samples&nbsp;must&nbsp;always&nbsp;be&nbsp;normalized&nbsp;to&nbsp;the&nbsp;interval<br>
+[-1,1]&nbsp;in&nbsp;order&nbsp;to&nbsp;be&nbsp;used&nbsp;in&nbsp;the&nbsp;active&nbsp;subspace&nbsp;method.<br>
+&nbsp;<br>
+The&nbsp;samples&nbsp;are&nbsp;stored&nbsp;in&nbsp;a&nbsp;numpy&nbsp;array&nbsp;of&nbsp;shape&nbsp;(M,m)&nbsp;where&nbsp;M&nbsp;is&nbsp;the&nbsp;number<br>
+of&nbsp;samples&nbsp;and&nbsp;m&nbsp;is&nbsp;the&nbsp;dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space.<br>
+&nbsp;<br>
+The&nbsp;class&nbsp;also&nbsp;provides&nbsp;a&nbsp;method&nbsp;to&nbsp;extract&nbsp;a&nbsp;single&nbsp;sample&nbsp;from&nbsp;the&nbsp;array&nbsp;and<br>
+a&nbsp;method&nbsp;to&nbsp;get&nbsp;the&nbsp;whole&nbsp;sampling&nbsp;array.<br>
+&nbsp;<br>
+Attributes:<br>
+public:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;M&nbsp;(int):&nbsp;Number&nbsp;of&nbsp;samples<br>
+&nbsp;&nbsp;&nbsp;&nbsp;m&nbsp;(int):&nbsp;Dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space<br>
+private:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;_array&nbsp;(numpy.ndarray):&nbsp;Array&nbsp;containing&nbsp;the&nbsp;samples<br>
+&nbsp;<br>
+Methods:<br>
+public:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Sampling-extract">extract</a>(index&nbsp;:&nbsp;int)&nbsp;-&gt;&nbsp;numpy.ndarray:&nbsp;Extracts&nbsp;a&nbsp;single&nbsp;sample&nbsp;from&nbsp;the&nbsp;array<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Sampling-samples">samples</a>()&nbsp;-&gt;&nbsp;numpy.ndarray:&nbsp;Returns&nbsp;the&nbsp;sampling&nbsp;array<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&gt;&nbsp;samples&nbsp;=&nbsp;<a href="#Sampling">Sampling</a>(100,&nbsp;10)<br>
+&nbsp;<br>
+Version:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;0.1<br>
+Contributors:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Niklas&nbsp;Hornischer&nbsp;(nh605@cam.ac.uk)<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="Sampling-__init__"><strong>__init__</strong></a>(self, M: int, m: int)</dt><dd><tt>Constructor&nbsp;for&nbsp;the&nbsp;<a href="#Sampling">Sampling</a>&nbsp;<a href="builtins.html#object">object</a><br>
+&nbsp;<br>
+Sets&nbsp;the&nbsp;<a href="#Sampling">Sampling</a>&nbsp;attributes&nbsp;M&nbsp;and&nbsp;m&nbsp;to&nbsp;the&nbsp;values&nbsp;passed&nbsp;to&nbsp;the<br>
+constructor&nbsp;and&nbsp;calls&nbsp;the&nbsp;random_uniform&nbsp;method&nbsp;to&nbsp;generate&nbsp;the&nbsp;samples.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;M&nbsp;(int):&nbsp;Number&nbsp;of&nbsp;samples<br>
+&nbsp;&nbsp;&nbsp;&nbsp;m&nbsp;(int):&nbsp;Dimension&nbsp;of&nbsp;the&nbsp;parameter&nbsp;space<br>
+&nbsp;<br>
+Raises:&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;M&nbsp;or&nbsp;m&nbsp;are&nbsp;not&nbsp;greater&nbsp;than&nbsp;0</tt></dd></dl>
+
+<dl><dt><a name="Sampling-extract"><strong>extract</strong></a>(self, index: int)</dt><dd><tt>Extracts&nbsp;a&nbsp;single&nbsp;sample&nbsp;from&nbsp;the&nbsp;array<br>
+&nbsp;<br>
+Args:&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;index&nbsp;(int):&nbsp;Index&nbsp;of&nbsp;the&nbsp;sample&nbsp;to&nbsp;be&nbsp;extracted<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;numpy.ndarray:&nbsp;The&nbsp;sample&nbsp;at&nbsp;the&nbsp;given&nbsp;index<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;index&nbsp;is&nbsp;out&nbsp;of&nbsp;bounds</tt></dd></dl>
+
+<dl><dt><a name="Sampling-random_uniform"><strong>random_uniform</strong></a>(self, overwrite=False)</dt><dd><tt>Generates&nbsp;the&nbsp;samples&nbsp;using&nbsp;a&nbsp;uniform&nbsp;distribution<br>
+&nbsp;<br>
+Generates&nbsp;the&nbsp;samples&nbsp;using&nbsp;a&nbsp;uniform&nbsp;distribution&nbsp;with&nbsp;values&nbsp;between&nbsp;-1&nbsp;and&nbsp;1.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;overwrite&nbsp;(bool,&nbsp;optional):&nbsp;If&nbsp;True,&nbsp;overwrites&nbsp;the&nbsp;existing&nbsp;samples.&nbsp;Default&nbsp;is&nbsp;False.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AttributeError:&nbsp;If&nbsp;the&nbsp;samples&nbsp;already&nbsp;exist&nbsp;and&nbsp;overwrite&nbsp;is&nbsp;False</tt></dd></dl>
+
+<dl><dt><a name="Sampling-samples"><strong>samples</strong></a>(self)</dt><dd><tt>Returns&nbsp;the&nbsp;sampling&nbsp;array<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;numpy.ndarray:&nbsp;The&nbsp;sampling&nbsp;array</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table></td></tr></table>
+</body></html>
