@@ -130,7 +130,7 @@ class Clustering(Sampling):
     Example:
         >>> kmeans = Clustering(100, 2, 5)
         >>> kmeans.detect()
-        >>> kmeans.plot("2D.svg")
+        >>> kmeans.plot("2D.pdf")
 
     Version:
         0.1
@@ -245,14 +245,14 @@ class Clustering(Sampling):
             if not np.isnan(centroid).any():
                 self._centroids[i] = _new_centroid
     
-    def plot(self, filename = "kmeans.svg"):
+    def plot(self, filename = "kmeans.pdf"):
         """Plots the clusters in the parameter space
         
         To visualize the figures, use plt.show() after calling this method. 
         This is especially useful when plotting 3D parameter spaces.
 
         Args:
-            filename (str, optional): Name of the file to save the plot to. Default is kmeans.svg
+            filename (str, optional): Name of the file to save the plot to. Default is kmeans.pdf
         
         Raises:
             AssertionError: If the dimension of the parameter space is greater than 3
@@ -290,7 +290,7 @@ class Clustering(Sampling):
             raise ValueError("Cannot plot more than 3 dimensions")
         if not os.path.exists(os.path.join(dir,"figures")):
             os.makedirs(os.path.join(dir,"figures"))
-        plt.savefig(os.path.join(dir, "figures", filename), dpi=300, format="svg")
+        plt.savefig(os.path.join(dir, "figures", filename), dpi=300, format="pdf")
 
 class Functional:
     """ Class for constructing a functional, in order to evaluate a function, its derivative and interpolated values.
@@ -594,12 +594,27 @@ class Functional:
         else:
             raise ValueError("No interpolant found")
     
-    def gradient(self, x : np.ndarray, sampling = None):
+    def gradient(self, x : np.ndarray, sampling = None, order = 2):
+        """Calculates the gradient at the given point with the specified method.
+
+        Args:
+            x (numpy.ndarray): Point at which the gradient is calculated
+            sampling (Sampling, optional): Sampling object that includes the clusters. Defaults to None.
+                                            If this argument is not none, the gradient is calculated locally.
+            order (int, optional): Order of the finite difference method. Defaults to 2.
+
+        Returns:
+            numpy.ndarray: Gradient at the given point
+
+        Raises:
+            AssertionError: If the dimension of the point is not equal to the dimension of the interpolant
+            ValueError: If no gradient method is specified
+        """
         assert(len(x)==self.m)
         if not hasattr(self, 'gradient_method'):
             raise ValueError("No gradient method specified")
         if self.gradient_method == "FD":
-            return self._finite_differences(x)
+            return self._finite_differences(x, order = order)
         elif self.gradient_method == "A":
             return self._derivative(x)
         elif self.gradient_method == "I":
@@ -615,13 +630,13 @@ class Functional:
         else:
             raise ValueError("No allowed gradient method specified")
 
-    def _finite_differences(self, x : np.ndarray, h = 1e-6):
+    def _finite_differences(self, x : np.ndarray, h = 1e-6, order = 2):
         """Calculates the gradient of the interpolant at the given point using finite differences.
 
         Args:
             x (numpy.ndarray): Point at which the gradient is calculated
             h (float, optional): Step size for the finite differences. Defaults to 1e-6.
-
+            order (int, optional): Order of the finite differences. Defaults to 2.
         Returns:
             np.ndarray: Gradient of the interpolant at the given point
 
@@ -634,21 +649,34 @@ class Functional:
         assert h>0, "h must be positive" 
 
         dfdx = np.zeros(self.m)
+        if order == 1:
+            f_0 = self.evaluate(x)
         for i in range(self.m):
-            #f(x+e_ih)
-            x[i] += h
-            f_1 = self.evaluate(x)
-            
-            #f(x-e_ih)
-            x[i] -= 2*h
-            f_2 = self.evaluate(x)
+            if order ==2:
+                #f(x+e_ih)
+                x[i] += h
+                f_1 = self.evaluate(x)
+                
+                #f(x-e_ih)
+                x[i] -= 2*h
+                f_2 = self.evaluate(x)
 
-            # Second-order central finite differences (ZFD)
-            dfdx[i] = (f_1-f_2) / (2*h)
+                # Second-order central finite differences (ZFD)
+                dfdx[i] = (f_1-f_2) / (2*h)
 
-            # Reset x
-            x[i] += h
+                # Reset x
+                x[i] += h
+            elif order == 1:
+                x[i] += h
+                f_1 = self.evaluate(x)
 
+                # First-order forward finite differences (FFD)
+                dfdx[i] = (f_1-f_0) / h
+
+                # Reset x
+                x[i] -= h
+            else:
+                raise ValueError("No implemented order of finite differences")
         return dfdx
 
 class ASFEniCSx:
