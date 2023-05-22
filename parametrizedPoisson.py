@@ -25,7 +25,6 @@ from petsc4py.PETSc import ScalarType
 from scipy.sparse.linalg import eigsh
 import asfenicsx
 
-model_rank = 0
 gdim = 2
 dir = os.path.dirname(__file__)
 
@@ -101,10 +100,9 @@ v = ufl.TestFunction(V)
 
 def calculate_eigenpairs(mesh, beta):
     vertices = mesh.geometry.x
-    num_nodes = np.size(vertices,0)
 
     def correlation_operator(s, t, beta):
-        # C(s,t) = exp(\beta^{-1} ||s-t||_1)
+        # C(s,t) = exp(-\beta^{-1} ||s-t||_1)
         return np.exp(-la.norm(s-t, ord=1)/beta)
     
     # Calculate the correlation matrix for the mesh grid
@@ -117,9 +115,14 @@ def calculate_eigenpairs(mesh, beta):
             # Evaluate only upper triangular part of the correlation matrix, because the correlation matrix is symmetric
             corr_mat[i, j] = corr_mat[j, i] = correlation_operator(s, t, beta)
             progress.update(1)
-
+    progress.close()
     # Calculate the eigenpairs of the correlation matrix
     eigenvalues, eigenvectors = eigsh(corr_mat,k=m)
+
+    # Sort eigenpairs in descending order
+    idx = eigenvalues.argsort()[::-1]
+    eigenvalues = eigenvalues[idx]
+    eigenvectors = eigenvectors[:,idx]
 
     norm = la.norm(eigenvectors, axis=0)
     eigenvectors = eigenvectors/norm
@@ -152,13 +155,15 @@ a.interpolate(lambda x: 0*x[0]+1)
 
 linear = f * v * ufl.dx
 bilinear = ufl.dot(a*ufl.grad(u), ufl.grad(v))*ufl.dx
-  
+problem = fem.petsc.LinearProblem(bilinear, linear, bcs=[bc_D],petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
+
+
 def solve_problem(x):
     
     # KL expansion based on eigenpairs of the correlation operator
     if x is not None:
         a.vector[:] = kl_expansion(x)
-    problem = fem.petsc.LinearProblem(bilinear, linear, bcs=[bc_D],petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
+#    problem = fem.petsc.LinearProblem(bilinear, linear, bcs=[bc_D],petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
     uh = problem.solve()
     return uh
 
@@ -199,36 +204,49 @@ def test_solver():
 # and the components of c correspod to the mesh nodes on \Gamma_N that are equal to one with 
 # the rest equal to zero.
 
-def quantity_of_interest(uh):
-    c=fem.Function(V)
-    c.interpolate(lambda x: np.isclose(x[0],1.0).astype(int))
-    return fem.assemble_scalar(fem.form(ufl.inner(c,uh)*ufl.ds))
+c=fem.Function(V)
+c.interpolate(lambda x: np.isclose(x[0],1.0).astype(int))
 
 def calculate_qof(x):
     uh = solve_problem(x)
-    return quantity_of_interest(uh)
+    return fem.assemble_scalar(fem.form(ufl.inner(c,uh)*ufl.ds))
 
 if __name__ == "__main__":
     # Validation of the solver using an unparametrized poisson problem
     test_solver()
 
     # Dimensions of parameter space
-    m = 50
-    M = 20
+    m = 100
+    M = 300
 
     # Set the parameter values
     samples = asfenicsx.Sampling(M,m)
 
-    (eigenvalues, eigenvectors)=calculate_eigenpairs(mesh, 0.1)
+    (eigenvalues, eigenvectors)=calculate_eigenpairs(mesh, 1)
 
     xdmf = XDMFFile(mesh.comm, "parametrizedPoisson/solutions.xdmf", "w")
     xdmf.write_mesh(mesh)
     progress = tqdm.autonotebook.tqdm(desc="Solving Problem", total=M)
     for i in range(M):
-        uh=solve_problem(samples.extract_sample(i))
+        uh=solve_problem(samples.extract(i))
         uh.name = "u"
         xdmf.write_function(uh,i+1)
         xdmf.write_function(a,i+1)
         progress.update(1)
     xdmf.close()
+    progress.close()
+
+    cost = asfenicsx.Functional(m, calculate_qof)
+    cost.get_gradient_method('FD')
+
+    active_subspace = asfenicsx.ASFEniCSx(20, cost, samples)
+
+    U, S = active_subspace.random_sampling_algorithm(info=True)
+
+    print(cost.number_of_calls)
+    plt.figure()
+    # Plot on a log axis
+    plt.plot(S)
+    plt.yscale('log')
+    plt.show()
 
