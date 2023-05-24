@@ -1,8 +1,20 @@
 import numpy as np
 import math
+import os
 from asfenicsx import ASFEniCSx, clustering, functional
 
 import matplotlib.pyplot as plt
+
+if not os.path.exists("bivariateAnalyticalTest"):
+    os.mkdir("bivariateAnalyticalTest")
+
+os.chdir("bivariateAnalyticalTest")
+
+dir = os.path.join(os.path.dirname(__file__), "bivariateAnalyticalTest")
+
+if not os.path.exists("figures"):
+    os.mkdir("figures")
+
 
 def evaluate_f(x : list or np.array):
     f = math.exp(0.7 * x[0] + 0.3 * x[1])
@@ -34,8 +46,8 @@ if __name__ == '__main__':
     # Define clustered samples
     samples = clustering(100, 2, 5)
     samples.detect()
-    samples.plot("2D_samples.pdf")
-    samples.save("bivariate_samples.json")
+    samples.plot(os.path.join(dir,"figures/2D_samples.pdf"))
+    samples.save(os.path.join(dir,"bivariate_samples.json"))
 
     samples.assign_values(evaluate_f)
 

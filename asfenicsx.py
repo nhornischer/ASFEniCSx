@@ -521,9 +521,7 @@ class clustering(sampling):
             ax.set_zlabel(r'$x_3$')
         else:
             raise ValueError("Cannot plot more than 3 dimensions")
-        if not os.path.exists(os.path.join(dir,"figures")):
-            os.makedirs(os.path.join(dir,"figures"))
-        plt.savefig(os.path.join(dir, "figures", filename), dpi=300, format="pdf")
+        plt.savefig(filename, dpi=300, format="pdf")
 
     def load(self, data : np.ndarray, centroids : np.ndarray, clusters : list, overwrite = False):
         """
@@ -707,7 +705,6 @@ class functional:
             _data = sampling.samples()
             if hasattr(sampling, "_values"):
                 _values = sampling.values()
-                print("Has values")
             else:
                 _values = None
             coefficients, exponents = self.multivariate_interpolation(_data, _values, order = order, method = interpolation_method)
