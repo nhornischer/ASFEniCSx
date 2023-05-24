@@ -1,3 +1,6 @@
 *.pyc
 parametrizedPoisson/
+airfoilNavierStokes/
 figures/
+*.DS_Store
+*.json

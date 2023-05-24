@@ -3,7 +3,32 @@ import json
 import scipy
 
 class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
+    """Class for encoding numpy arrays to json
+    
+    This class is used to encode numpy arrays to json. It is used in the save method of the sampling and clustering classes.
+    
+    Methods:
+    public:
+        default(obj) -> json: Encodes the given object to json
+        
+    Example:
+        >>> json.dumps(np.array([1,2,3]), cls=NumpyEncoder)
+        '[1, 2, 3]'
+    
+    Version:
+        0.1
+    Contributors:
+        Niklas Hornischer (nh605@cam.ac.uk)
+    """
+    def default(self, obj : object):
+        """Returns a converted object that can be converted to json
+        
+        Args:
+            obj (object): The object to be encoded
+            
+        Returns:
+            (object) object that can be converted to json
+        """
         if isinstance(obj, np.integer):
             return int(obj)
         elif isinstance(obj, np.floating):
@@ -16,31 +41,36 @@ class utils:
 
     This class provides utility functions for the active subspace method.
 
-    Attributes:
-    public:
-        None
-    private:
-        None
-
     Methods:
     public:
-        None
-    private:
-        None
+        load(filename : str) -> object: Loads a sampling object from a json file
 
     Example:
-        >>> utils.function()
-
+        >>> utils.load("sampling.json")
+        <asfenicsx.sampling object at 0x7f8b1c0b6a90>
+    
     Version:
         0.1
     Contributors:
-        Niklas Hornischer (
+        Niklas Hornischer (nh605@cam.ac.uk)
     """
-
     def load(filename : str):
-        """Loads a object from a json file"""
-        with open(filename, "r") as f:
-            data=json.load(f)
+        """Loads a sampling object from a json file
+        
+        Args:
+            filename (str): The name of the file to be loaded
+            
+        Returns:
+            object: The sampling object
+        
+        Raises:
+            FileNotFoundError: If the file does not exist
+        """
+        try:
+            with open(filename, "r") as f:
+                data=json.load(f)
+        except FileNotFoundError:
+            raise FileNotFoundError("File not found")
         data_type = data["object_type"]
         if data_type == "sampling":
             object = sampling(data["M"], data["m"])
@@ -78,9 +108,17 @@ class sampling:
     
     Methods:
     public:
+        random_uniform(overwrite : bool) -> None: Generates the samples using a uniform distribution  
         extract(index : int) -> numpy.ndarray: Extracts a single sample from the array
+        replace(index : int, sample : numpy.ndarray) -> None: Replaces a single sample in the array
         samples() -> numpy.ndarray: Returns the sampling array
-        
+        assign_values(f : callable) -> None: Assigns values to the samples using a function
+        assign_value(index : int, value : float) -> None: Assigns a value to a single sample
+        extract_value(index : int) -> numpy.ndarray: Extracts the value of the sample at the given index
+        values() -> numpy.ndarray: Returns the array containing the values of the samples
+        index(sample : numpy.ndarray) -> int: Returns the index of the given sample in the sampling array
+        save(filename : str) -> None: Saves the sampling object to a json file
+        load(data : numpy.ndarray, overwrite : boolean) -> None: Loads the sampling object from a numpy array
 
     Example:
         >>> samples = sampling(100, 10)
@@ -255,8 +293,7 @@ class sampling:
         with open(filename, "w") as f:
             json.dump(self.__dict__, f, cls=NumpyEncoder)
 
-
-    def load(self, data : np.ndarray):
+    def load(self, data : np.ndarray, overwrite = False):
         """Loads array data into the sampling object
 
         Loads array data into the sampling object. The array must have the shape (M,m) where M is the number of samples
@@ -264,29 +301,19 @@ class sampling:
 
         Args:
             data (numpy.ndarray): Array containing the samples
+            overwrite (bool, optional): If True, overwrites the existing samples. Default is False.
 
         Raises:
             AssertionError: If the array has the wrong shape
 
+
         """
         assert data.shape == (self.M, self.m), "Array has wrong shape"
-        self._array = np.asarray(data)
+        if not hasattr(self, "_array") or overwrite:
+            self._array = np.asarray(data)
+        else:
+            raise AttributeError("Samples already exist. Use overwrite=True to overwrite them")
 
-    def print(self):
-        """Prints the sampling object
-
-        Prints the sampling object in a readable format.
-        """
-        np.set_printoptions(precision=3)
-        np.set_printoptions(edgeitems=2)
-        np.set_printoptions(threshold=0)
-        print("Sampling object")
-        print("\tM = ", self.M)
-        print("\tm = ", self.m)
-        if hasattr(self, "_values"):
-            print("\tvalues = ", self._values)
-        
-    
 class clustering(sampling):
     """Class for creating clustered samples of a parameter space as a subclass of sampling
 
@@ -312,6 +339,7 @@ class clustering(sampling):
         plot(filename : str): Plots the clusters
         clusters() -> list: Returns the clusters
         centroids() -> numpy.ndarray: Returns the centroids of the clusters
+        cluster_index(x : numpy.ndarray) -> int: Returns the index of the cluster the sample belongs to
 
     Example:
         >>> kmeans = clustering(100, 2, 5)
@@ -360,7 +388,7 @@ class clustering(sampling):
         """Returns the clusters
 
         Returns:
-            list: List of numpy.ndarrays containing the clusters
+            list: List of cluster containing a list of the indices of the samples belonging to the clusters
         """
         return self._clusters
     
@@ -479,20 +507,31 @@ class clustering(sampling):
             os.makedirs(os.path.join(dir,"figures"))
         plt.savefig(os.path.join(dir, "figures", filename), dpi=300, format="pdf")
 
-    def load(self, data, centroids, clusters):
-        super().load(data)
-        self._centroids = np.asarray(centroids)
-        self._clusters = []
-        for i in range(len(clusters)):
-            self._clusters.append(np.asarray(clusters[i]))
-
-    def print(self):
-        """Prints the sampling object
-
-        Prints the sampling object in a readable format.
+    def load(self, data : np.ndarray, centroids : np.ndarray, clusters : list, overwrite = False):
         """
-        super().print()
-        print(f"\tNumber of clusters: {self.k}")
+        Loads the data into the clustering object
+        
+        Args:
+            data (numpy.ndarray): Data to be loaded into the clustering object
+            centroids (numpy.ndarray): Centroids of the clusters
+            clusters (list): List of clusters of lists containing the indices of the samples belonging to the clusters
+            overwrite (bool, optional): If True, the data will be overwritten. Default is False
+        
+        Raises:
+            ValueError: If the centroids have already been initialized and overwrite is False
+            ValueError: If the clusters have already been initialized and overwrite is False
+            
+        """
+        super().load(data)
+        if hasattr(self, "_centroids") and not overwrite:
+            raise ValueError("Centroids have already been initialized. Set overwrite=True to overwrite the data.")
+        else:
+            self._centroids = np.asarray(centroids)
+        if hasattr(self, "_clusters") and not overwrite:
+            raise ValueError("Clusters have already been initialized. Set overwrite=True to overwrite the data.")
+            self._clusters = []
+            for i in range(len(clusters)):
+                self._clusters.append(np.asarray(clusters[i]))
 
 class functional:
     """ Class for constructing a functional, in order to evaluate a function, its derivative and interpolated values.
