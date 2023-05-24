@@ -1,7 +1,56 @@
 import numpy as np
+import json
 import scipy
 
-class Sampling:
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+
+class utils:
+    """Class for utility functions
+
+    This class provides utility functions for the active subspace method.
+
+    Attributes:
+    public:
+        None
+    private:
+        None
+
+    Methods:
+    public:
+        None
+    private:
+        None
+
+    Example:
+        >>> utils.function()
+
+    Version:
+        0.1
+    Contributors:
+        Niklas Hornischer (
+    """
+
+    def load(filename : str):
+        """Loads a object from a json file"""
+        with open(filename, "r") as f:
+            data=json.load(f)
+        data_type = data["object_type"]
+        if data_type == "sampling":
+            object = sampling(data["M"], data["m"])
+            object.load(data["_array"])
+        elif data_type=="clustering":
+            object = clustering(data["M"], data["m"], data["k"], data["_max_iter"])
+            object.load(data["_array"], data["_centroids"], data["_clusters"])
+        return object
+
+class sampling:
     """Class for sampling the domain of a parameter space
 
     This class produces an object containing the samples of the domain as well
@@ -34,7 +83,7 @@ class Sampling:
         
 
     Example:
-        >>> samples = Sampling(100, 10)
+        >>> samples = sampling(100, 10)
 
     Version:
         0.1
@@ -42,9 +91,9 @@ class Sampling:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
     def __init__(self, M : int, m : int):
-        """Constructor for the Sampling object
+        """Constructor for the sampling object
 
-        Sets the Sampling attributes M and m to the values passed to the
+        Sets the sampling attributes M and m to the values passed to the
         constructor and calls the random_uniform method to generate the samples.
 
         Args:
@@ -57,6 +106,7 @@ class Sampling:
         assert M > 0, "Number of samples must be greater than 0"
         assert m > 0, "Dimension of parameter space must be greater than 0"
 
+        self.object_type = "sampling"
         self.M = M
         self.m = m
         self.random_uniform()
@@ -93,6 +143,20 @@ class Sampling:
         assert 0<= index < self.M, "Index out of bounds"
         return self._array[index,:]
     
+    def replace(self, index : int, sample : np.ndarray):
+        """Replaces a single sample in the array
+        
+        Args:
+            index (int): Index of the sample to be replaced
+            sample (numpy.ndarray): The new sample
+        
+        Raises:
+            AssertionError: If the index is out of bounds
+        """
+        assert 0<= index < self.M, "Index out of bounds"
+        assert sample.shape == (self.m,), "Sample has wrong shape"
+        self._array[index,:] = sample
+    
     def samples(self):
         """Returns the sampling array
         
@@ -100,9 +164,131 @@ class Sampling:
             numpy.ndarray: The sampling array
         """
         return self._array
+
+    def assign_values(self, f : callable):
+        """Assigns values to the sampling object
+
+        Assigns values to the sampling object by evaluating the given function at the samples.
+
+        Args:
+            f (callable): The function to be evaluated
+
+        Raises:
+            TypeError: If the function is not callable
+        """
+        assert callable(f), "Function must be callable"
+        self._values = np.apply_along_axis(f, 1, self._array)
+
+    def assign_value(self, index : int, value : float):
+        """Assigns a value to the sample at given index
+        
+        Args:
+            index (int): Index of the sample
+            value (float): The value to be assigned to the sample
+        
+        Raises:
+            AssertionError: If the index is out of bounds
+        """
+        assert 0<= index < self.M, "Index out of bounds"
+        if not hasattr(self, "_values"):
+            self._values = np.zeros(self.M)
+        self._values[index] = value
+
+    def extract_value(self, index : int):
+        """Returns the value assigned to the sample at given index
+        
+        Args:
+            index (int): Index of the sample
+        
+        Returns:
+            float: The value assigned to the sample at the given index
+
+        Raises:
+            AssertionError: If the index is out of bounds
+            AttributeError: If the values have not been assigned yet
+        """
+        assert 0<= index < self.M, "Index out of bounds"
+        assert hasattr(self, "_values"), "Values have not been assigned yet"
+        return self._values[index]
+
+    def values(self): 
+        """Returns the values assigned to the samples
+        
+        Returns:
+            numpy.ndarray: The values assigned to the samples
+            
+        Raises:
+            AttributeError: If the values have not been assigned yet
+        """
+        assert hasattr(self, "_values"), "Values have not been assigned yet"
+        return self._values
     
-class Clustering(Sampling):
-    """Class for creating clustered samples of a parameter space as a subclass of Sampling
+    def index(self, sample : np.ndarray):
+        """ Returns the index of the given sample in the sampling array
+        
+        Args:
+            sample (numpy.ndarray): The sample
+            
+        Returns:
+            int: The index of the sample in the sampling array
+            
+        Raises:
+            AssertionError: If the sample has the wrong shape
+            AssertionError: If the sample is not in the sampling array
+        """
+        assert sample.shape == (self.m,), "Sample has wrong shape"
+        assert sample in self._array, "Sample is not in the sampling array"
+        return np.where(self._array == sample)[0][0]
+    
+    def save(self, filename : str):
+        """Saves the sampling object to a json file
+
+        Saves the sampling object to a json file. The file is saved in the current working directory.
+
+        Args:
+            filename (str): Name of the file to be saved
+
+        Raises:
+            TypeError: If the filename is not a string
+        """
+        assert isinstance(filename, str), "Filename must be a string"
+        with open(filename, "w") as f:
+            json.dump(self.__dict__, f, cls=NumpyEncoder)
+
+
+    def load(self, data : np.ndarray):
+        """Loads array data into the sampling object
+
+        Loads array data into the sampling object. The array must have the shape (M,m) where M is the number of samples
+        and m is the dimension of the parameter space.
+
+        Args:
+            data (numpy.ndarray): Array containing the samples
+
+        Raises:
+            AssertionError: If the array has the wrong shape
+
+        """
+        assert data.shape == (self.M, self.m), "Array has wrong shape"
+        self._array = np.asarray(data)
+
+    def print(self):
+        """Prints the sampling object
+
+        Prints the sampling object in a readable format.
+        """
+        np.set_printoptions(precision=3)
+        np.set_printoptions(edgeitems=2)
+        np.set_printoptions(threshold=0)
+        print("Sampling object")
+        print("\tM = ", self.M)
+        print("\tm = ", self.m)
+        if hasattr(self, "_values"):
+            print("\tvalues = ", self._values)
+        
+    
+class clustering(sampling):
+    """Class for creating clustered samples of a parameter space as a subclass of sampling
 
     This class produces as sampling object that contains clustered samples of a parameter space in addition
     to the unclustered data. The clustering is done using the k-means algorithm.
@@ -116,7 +302,7 @@ class Clustering(Sampling):
         _array (numpy.ndarray): Array containing the samples
         _max_iter (int): Maximum number of iterations for the k-means algorithm
         _centroids (numpy.ndarray): Array containing the centroids of the clusters
-        _clusters (list): List containing the clusters
+        _clusters (list): List of index lists of each clusters
 
     Methods:
     public:
@@ -128,7 +314,7 @@ class Clustering(Sampling):
         centroids() -> numpy.ndarray: Returns the centroids of the clusters
 
     Example:
-        >>> kmeans = Clustering(100, 2, 5)
+        >>> kmeans = clustering(100, 2, 5)
         >>> kmeans.detect()
         >>> kmeans.plot("2D.pdf")
 
@@ -138,7 +324,7 @@ class Clustering(Sampling):
         Niklas Hornischer (nh605@cam.ac.uk)
     """
     def __init__(self, M : int, m : int,  k : int, max_iter = 1000):
-        """Constructor of the Clustering object
+        """Constructor of the clustering object
 
         Args:
             M (int): Number of samples
@@ -151,6 +337,7 @@ class Clustering(Sampling):
         """
         assert 0 < k < M, "Number of clusters must be greater than 0 and less than the number of samples"
         super().__init__(M, m)
+        self.object_type = "clustering"
         self.k = k
         self._max_iter = max_iter
     
@@ -196,7 +383,7 @@ class Clustering(Sampling):
             data (numpy.ndarray): Array containing the samples
         
         Returns:
-            list: List of numpy.ndarrays containing the clusters
+            List: List of the clusters containing a list of the indices of the samples belonging to the clusters
 
         Raises:
             AssertionError: If the centroids have not been initialized or the dimension of the data does not match the dimension of the parameter space
@@ -204,11 +391,9 @@ class Clustering(Sampling):
         assert hasattr(self, "_centroids"), "Centroids have not been initialized"
         assert np.shape(data)[1] == self.m, "Dimension of data does not match dimension of parameter space"
         _clusters=[[] for _ in range(self.k)]
-        for x in data:
+        for i,x in enumerate(data):
             idx = self.cluster_index(x)
-            _clusters[idx].append(x)
-        for i, cluster in enumerate(_clusters):
-            _clusters[i]= np.asarray(cluster)
+            _clusters[idx].append(i)
         return _clusters
 
     def cluster_index(self, x : np.ndarray):
@@ -238,10 +423,11 @@ class Clustering(Sampling):
         but changes the centroids of the cluster.
 
         Args:
-            _clusters (list): List of numpy.ndarrays containing the clusters
+            _clusters (list): List of clusters of lists containing the indices of the samples belonging to the clusters
         """
         for i, centroid in enumerate(self._centroids):
-            _new_centroid = np.mean(_clusters[i], axis=0)
+            cluster_data = np.asarray([self.extract(idx) for idx in _clusters[i]])
+            _new_centroid = np.mean(cluster_data, axis=0)
             if not np.isnan(centroid).any():
                 self._centroids[i] = _new_centroid
     
@@ -264,24 +450,25 @@ class Clustering(Sampling):
         dir = os.path.dirname(__file__)
         cmap = plt.get_cmap('hsv')
         scalarMap = cm.ScalarMappable(colors.Normalize(vmin=0, vmax=self.k),cmap=cmap)
+        cluster_data = [np.asarray([self.extract(idx) for idx in self._clusters[i]]) for i in range(self.k)]
         if self.m == 1:
             plt.figure("K-means clustering (1D)")
             for i in range(self.k):
                 plt.plot(self._centroids[i,0], 0, 'x', color=scalarMap.to_rgba(i))
-                plt.scatter(self._clusters[i][:,0], np.zeros(self._clusters[i].shape[0]),color=scalarMap.to_rgba(i))
+                plt.scatter(cluster_data[i][:,0], np.zeros(cluster_data[i].shape[0]),color=scalarMap.to_rgba(i))
             plt.xlabel(r'$x_1$')
         elif self.m == 2:
             plt.figure("K-means clustering (2D)")
             for i in range(self.k):
                 plt.plot(self._centroids[i,0], self._centroids[i,1], 'x', color=scalarMap.to_rgba(i))
-                plt.scatter(self._clusters[i][:,0], self._clusters[i][:,1],color=scalarMap.to_rgba(i))
+                plt.scatter(cluster_data[i][:,0], cluster_data[i][:,1],color=scalarMap.to_rgba(i))
             plt.xlabel(r'$x_1$')
             plt.ylabel(r'$x_2$')
         elif self.m ==3:
             plt.figure("K-means clustering (3D)")
             ax = plt.axes(projection='3d')
             for i in range(self.k):
-                ax.scatter3D(self._clusters[i][:,0], self._clusters[i][:,1], self._clusters[i][:,2],color=scalarMap.to_rgba(i))
+                ax.scatter3D(cluster_data[i][:,0], cluster_data[i][:,1], cluster_data[i][:,2],color=scalarMap.to_rgba(i))
                 ax.scatter3D(self._centroids[i,0], self._centroids[i,1], self._centroids[i,2], marker='x',color=scalarMap.to_rgba(i))
             ax.set_xlabel(r'$x_1$')
             ax.set_ylabel(r'$x_2$')
@@ -292,7 +479,22 @@ class Clustering(Sampling):
             os.makedirs(os.path.join(dir,"figures"))
         plt.savefig(os.path.join(dir, "figures", filename), dpi=300, format="pdf")
 
-class Functional:
+    def load(self, data, centroids, clusters):
+        super().load(data)
+        self._centroids = np.asarray(centroids)
+        self._clusters = []
+        for i in range(len(clusters)):
+            self._clusters.append(np.asarray(clusters[i]))
+
+    def print(self):
+        """Prints the sampling object
+
+        Prints the sampling object in a readable format.
+        """
+        super().print()
+        print(f"\tNumber of clusters: {self.k}")
+
+class functional:
     """ Class for constructing a functional, in order to evaluate a function, its derivative and interpolated values.
 
     Attributes:
@@ -314,7 +516,7 @@ class Functional:
         evaluate(x : numpy.ndarrray) -> float: Evaluates the function at the point x
         get_derivative(dfdx : callable): Set the analytical derivative of the function
         get_gradient_method(method : str): Sets the method for calculating the gradient
-        interpolation(samling : Sampling): Calculates the interpolant and its derivative of the given function
+        interpolation(samling : sampling): Calculates the interpolant and its derivative of the given function
         multivariate_interpolation(samples : numpy.ndarray, values : numpy.ndarray) -> numpy.ndarray, numpy.ndarray: Calculates the coefficients and exponents of the interpolant
         multivariate_polynomial(coefficients : numpy.ndarray, exponents : numpy.ndarray) -> callable: Returns a callable function of the interpolant
         multivariate_polynomial_derivative(coefficients : numpy.ndarray, exponents : numpy.ndarray) -> callable: Returns a callable function of the derivative of the interpolant
@@ -326,7 +528,7 @@ class Functional:
 
     Example:
         >>> def f(x): return x[0]**2 + x[1]**2
-        >>> func = Functional(2, f)
+        >>> func = functional(2, f)
         >>> x = np.array([1,2])
         >>> func.evaluate(x)
         5
@@ -334,7 +536,7 @@ class Functional:
         >>> func.get_gradient_method("A")
         >>> func.gradient(x)
         array([2, 4])
-        >>> func.interpolation(Sampling(10, 2), interpolation_method="LS")
+        >>> func.interpolation(sampling(10, 2), interpolation_method="LS")
         >>> func.get_gradient_method("I")
         >>> func.evaluate_interpolant(x)
         4.9999
@@ -347,7 +549,7 @@ class Functional:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
     def __init__(self, m : int, f : callable):
-        """Constructor of the Functional class
+        """Constructor of the functional class
         
         Args:
             m (int): Dimension of the parameter space
@@ -421,14 +623,14 @@ class Functional:
             raise ValueError("No derivative has been set. Please define the derivative before using the analytical method")
         self.gradient_method=method
     
-    def interpolation(self, sampling : Sampling, order = 2, interpolation_method = 'default', overwrite = False, clustering = False):
+    def interpolation(self, sampling : sampling, order = 2, interpolation_method = 'default', overwrite = False, clustering = False):
         """Calculates a polynomial interpolant (globally or locally) based on given samples.
 
         This function calculates a polynomial based on the multivariate interpolation function
         and sets the interpolant and its derivative as attributes of the functional object.
 
         Args:
-            sampling (Sampling): Sampling object containing the samples
+            sampling (sampling): sampling object containing the samples
             order (int, optional): Order of the polynomial interpolant. Defaults to 2.
             interpolation_method (str, optional): Method used to calculate the interpolant. Defaults to 'default'.
                                                     Possible values are 'default', 'LS' (least squares).
@@ -442,10 +644,16 @@ class Functional:
         """
         assert sampling.m == self.m, "The dimension of the samples must match the dimension of the parameter space"
         self.use_clusters = clustering
+
         # Calculates the global interpolant
         if not clustering:
             _data = sampling.samples()
-            coefficients, exponents = self.multivariate_interpolation(_data, None, order = order, method = interpolation_method) 
+            if hasattr(sampling, "_values"):
+                _values = sampling.values()
+                print("Has values")
+            else:
+                _values = None
+            coefficients, exponents = self.multivariate_interpolation(_data, _values, order = order, method = interpolation_method)
             if hasattr(self, "_interpolant") and not overwrite:
                 raise ValueError("The interpolant has already been calculated. Please set overwrite to True to overwrite the interpolant")
             self._interpolant = self.multivariate_polynomial(coefficients, exponents)
@@ -458,8 +666,14 @@ class Functional:
                 raise ValueError("The interpolants have already been calculated. Please set overwrite to True to overwrite the interpolants")
             self._interpolants = []
             self._derivatives = []
-            for _data in sampling.clusters():
-                coefficients, exponents = self.multivariate_interpolation(_data, None, order = order, method = interpolation_method) 
+            for index_list in sampling.clusters():
+                _data = np.asarray([sampling.extract(i) for i in index_list])
+                # Check if values have already been calculated
+                if hasattr(sampling, "_values"):
+                    _values = np.asarray([sampling.extract_value(i) for i in index_list])
+                else:
+                    _values = None
+                coefficients, exponents = self.multivariate_interpolation(_data, _values, order = order, method = interpolation_method) 
                 self._interpolants.append(self.multivariate_polynomial(coefficients, exponents))
                 self._derivatives.append(self.multivariate_polynomial_derivative(coefficients, exponents))
 
@@ -523,24 +737,28 @@ class Functional:
 
         # If no values are given evaluate the function at the samples
         if values is None:
+            assert(np.shape(samples)[0] >= number_of_samples), "The number of samples must be greater or equal to the number of coefficients."
             values = np.zeros(number_of_samples)
             for i in range(number_of_samples):
                 values[i] = self.evaluate(samples[i,:])
         else:
-            assert len(exponents) <= len(values), "The number of samples must be smaller or equal to the number of coefficients."
+            assert len(exponents) <= len(values), "The number of samples must be greater or equal to the number of coefficients."
             assert np.shape(samples)[0] == len(values), "The number of samples and values must be equal"
-
+            # Fake set the numer of calls to the function
+            if method == 'LS':
+                self._number_of_calls = len(values)
+            else:
+                self._number_of_calls = len(exponents)
         
         A=np.ones([number_of_samples, len(exponents)])
         for i in range(number_of_samples):
             for j, exponent in enumerate(exponents):
                 A[i,j]=np.prod(samples[i,:]**exponent)
                 
-        
-        if method=='LS':
+        if method == 'LS':
             c,_,_,_ = np.linalg.lstsq(A, values[:number_of_samples], rcond=None)
         else:
-            c=np.linalg.solve(A, values[:number_of_samples])
+            c = np.linalg.solve(A, values[:number_of_samples])
         return c, np.asarray(exponents)
 
     def multivariate_polynomial(self, coefficients : np.ndarray, exponents : np.ndarray):
@@ -573,7 +791,7 @@ class Functional:
 
         Args:
             x (numpy.ndarray): Point at which the interpolant is evaluated
-            sampling (Sampling, optional): Sampling object that includes the clusters. Defaults to None.
+            sampling (sampling, optional): sampling object that includes the clusters. Defaults to None.
                                             If this argument is not none, the evaluation is done locally.
         
         Returns:
@@ -599,7 +817,7 @@ class Functional:
 
         Args:
             x (numpy.ndarray): Point at which the gradient is calculated
-            sampling (Sampling, optional): Sampling object that includes the clusters. Defaults to None.
+            sampling (sampling, optional): sampling object that includes the clusters. Defaults to None.
                                             If this argument is not none, the gradient is calculated locally.
             order (int, optional): Order of the finite difference method. Defaults to 2.
 
@@ -683,13 +901,13 @@ class ASFEniCSx:
     """Class for constructing the active subspace in FeniCSx based on Constantine et al. 
 
     The class is based on the paper by Constantine et al. The class is constructed
-    to be used with the FeniCSx library and requires a Functional and a Sampling object.
+    to be used with the FeniCSx library and requires a functional and a sampling object.
 
     Attributes:
     public:
         n (int): Desired Dimension of the active subspace
-        function (Functional): Functional describing the quantity of interest
-        samples (Sampling): Sampling object containing the samples
+        function (functional): functional describing the quantity of interest
+        samples (sampling): sampling object containing the samples
         eigenvalues (numpy.ndarray): Eigenvalues of the covariance matrix (if created)
         eigenvectors (numpy.ndarray): Eigenvectors of the covariance matrix (if created)
 
@@ -700,11 +918,11 @@ class ASFEniCSx:
         random_sampling_algorithm() : Performs the random sampling algorithm to construct the active subspace
 
     Example:
-        >>> from ASFEniCSx import ASFEniCSx, Sampling, Functional
+        >>> from ASFEniCSx import ASFEniCSx, sampling, functional
         >>> def f(x): return x[0]**2 + x[1]**2
         >>> def dfdx(x): return [2*x[0], 2*x[1]]
-        >>> samples = Sampling(100, 2)
-        >>> function = Functional(2, f)
+        >>> samples = sampling(100, 2)
+        >>> function = functional(2, f)
         >>> function.get_derivative(dfdx)                           # Optional but sets the derivative of the function to the analytical solution
         >>> asfenicsx = ASFEniCSx(1, function, samples)
         >>> U, S = asfenicsx.random_sampling_algorithm()
@@ -715,13 +933,13 @@ class ASFEniCSx:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
 
-    def __init__(self, n : int, function : Functional, samples : Sampling):
+    def __init__(self, n : int, function : functional, samples : sampling):
         """Constructor for the ASFEniCSx class
 
         Args:
             n (int): Desired Dimension of the active subspace
-            function (Functional): Functional describing the quantity of interest
-            samples (Sampling): Sampling object containing the samples
+            function (functional): functional describing the quantity of interest
+            samples (sampling): sampling object containing the samples
 
         Raises:
             ValueError: If n is larger than the number of dimensions of the parameter space

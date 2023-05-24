@@ -1,9 +1,8 @@
 import numpy as np
 import math
-from asfenicsx import ASFEniCSx, Clustering, Functional
+from asfenicsx import ASFEniCSx, clustering, functional
 
 import matplotlib.pyplot as plt
-from matplotlib import cm
 
 def evaluate_f(x : list or np.array):
     f = math.exp(0.7 * x[0] + 0.3 * x[1])
@@ -33,14 +32,18 @@ if __name__ == '__main__':
     plt.clf()
 
     # Define clustered samples
-    samples = Clustering(100, 2, 5)
+    samples = clustering(100, 2, 5)
     samples.detect()
     samples.plot("2D_samples.pdf")
+    samples.save("bivariate_samples.json")
+
+    samples.assign_values(evaluate_f)
+
+    samples.print()
 
     # Define the cost function
-    cost = Functional(2, evaluate_f)
+    cost = functional(2, evaluate_f)
     cost.get_derivative(calculate_df_dx)
-
 
     """ 
     Perform a validation test of the differentiation methods
