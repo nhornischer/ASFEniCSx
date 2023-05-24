@@ -39,8 +39,6 @@ if __name__ == '__main__':
 
     samples.assign_values(evaluate_f)
 
-    samples.print()
-
     # Define the cost function
     cost = functional(2, evaluate_f)
     cost.get_derivative(calculate_df_dx)

@@ -114,6 +114,7 @@ class sampling:
         samples() -> numpy.ndarray: Returns the sampling array
         assign_values(f : callable) -> None: Assigns values to the samples using a function
         assign_value(index : int, value : float) -> None: Assigns a value to a single sample
+        add_sample(sample : numpy.ndarray) -> None: Adds a sample to the sampling array or adds newly generated sample
         extract_value(index : int) -> numpy.ndarray: Extracts the value of the sample at the given index
         values() -> numpy.ndarray: Returns the array containing the values of the samples
         index(sample : numpy.ndarray) -> int: Returns the index of the given sample in the sampling array
@@ -194,6 +195,23 @@ class sampling:
         assert 0<= index < self.M, "Index out of bounds"
         assert sample.shape == (self.m,), "Sample has wrong shape"
         self._array[index,:] = sample
+
+    def add_sample(self, sample : np.ndarray or None):
+        """Adds a sample to the sampling array
+
+        Args:
+            sample (numpy.ndarray or None): The sample to be added
+
+        Raises:
+            AssertionError: If the sample has the wrong shape
+        """
+        if sample is None:
+            sample = np.random.uniform(-1, 1, self.m)
+        else:
+            assert sample.shape == (self.m,), "Sample has wrong shape"
+        self._array = np.vstack((self._array, sample))
+        self.M += 1
+        pass
     
     def samples(self):
         """Returns the sampling array

@@ -385,6 +385,14 @@ Args:<br>
 
 <hr>
 Methods inherited from <a href="asfenicsx.html#sampling">sampling</a>:<br>
+<dl><dt><a name="clustering-add_sample"><strong>add_sample</strong></a>(self, sample: numpy.ndarray)</dt><dd><tt>Adds&nbsp;a&nbsp;sample&nbsp;to&nbsp;the&nbsp;<a href="#sampling">sampling</a>&nbsp;array<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;sample&nbsp;(numpy.ndarray&nbsp;or&nbsp;None):&nbsp;The&nbsp;sample&nbsp;to&nbsp;be&nbsp;added<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;sample&nbsp;has&nbsp;the&nbsp;wrong&nbsp;shape</tt></dd></dl>
+
 <dl><dt><a name="clustering-assign_value"><strong>assign_value</strong></a>(self, index: int, value: float)</dt><dd><tt>Assigns&nbsp;a&nbsp;value&nbsp;to&nbsp;the&nbsp;sample&nbsp;at&nbsp;given&nbsp;index<br>
 &nbsp;<br>
 Args:<br>
@@ -750,6 +758,7 @@ public:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#sampling-samples">samples</a>()&nbsp;-&gt;&nbsp;numpy.ndarray:&nbsp;Returns&nbsp;the&nbsp;<a href="#sampling">sampling</a>&nbsp;array<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#sampling-assign_values">assign_values</a>(f&nbsp;:&nbsp;callable)&nbsp;-&gt;&nbsp;None:&nbsp;Assigns&nbsp;values&nbsp;to&nbsp;the&nbsp;samples&nbsp;using&nbsp;a&nbsp;function<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#sampling-assign_value">assign_value</a>(index&nbsp;:&nbsp;int,&nbsp;value&nbsp;:&nbsp;float)&nbsp;-&gt;&nbsp;None:&nbsp;Assigns&nbsp;a&nbsp;value&nbsp;to&nbsp;a&nbsp;single&nbsp;sample<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#sampling-add_sample">add_sample</a>(sample&nbsp;:&nbsp;numpy.ndarray)&nbsp;-&gt;&nbsp;None:&nbsp;Adds&nbsp;a&nbsp;sample&nbsp;to&nbsp;the&nbsp;<a href="#sampling">sampling</a>&nbsp;array&nbsp;or&nbsp;adds&nbsp;newly&nbsp;generated&nbsp;sample<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#sampling-extract_value">extract_value</a>(index&nbsp;:&nbsp;int)&nbsp;-&gt;&nbsp;numpy.ndarray:&nbsp;Extracts&nbsp;the&nbsp;value&nbsp;of&nbsp;the&nbsp;sample&nbsp;at&nbsp;the&nbsp;given&nbsp;index<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#sampling-values">values</a>()&nbsp;-&gt;&nbsp;numpy.ndarray:&nbsp;Returns&nbsp;the&nbsp;array&nbsp;containing&nbsp;the&nbsp;values&nbsp;of&nbsp;the&nbsp;samples<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#sampling-index">index</a>(sample&nbsp;:&nbsp;numpy.ndarray)&nbsp;-&gt;&nbsp;int:&nbsp;Returns&nbsp;the&nbsp;index&nbsp;of&nbsp;the&nbsp;given&nbsp;sample&nbsp;in&nbsp;the&nbsp;<a href="#sampling">sampling</a>&nbsp;array<br>
@@ -776,6 +785,14 @@ Args:<br>
 &nbsp;<br>
 Raises:&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;M&nbsp;or&nbsp;m&nbsp;are&nbsp;not&nbsp;greater&nbsp;than&nbsp;0</tt></dd></dl>
+
+<dl><dt><a name="sampling-add_sample"><strong>add_sample</strong></a>(self, sample: numpy.ndarray)</dt><dd><tt>Adds&nbsp;a&nbsp;sample&nbsp;to&nbsp;the&nbsp;<a href="#sampling">sampling</a>&nbsp;array<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;sample&nbsp;(numpy.ndarray&nbsp;or&nbsp;None):&nbsp;The&nbsp;sample&nbsp;to&nbsp;be&nbsp;added<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;AssertionError:&nbsp;If&nbsp;the&nbsp;sample&nbsp;has&nbsp;the&nbsp;wrong&nbsp;shape</tt></dd></dl>
 
 <dl><dt><a name="sampling-assign_value"><strong>assign_value</strong></a>(self, index: int, value: float)</dt><dd><tt>Assigns&nbsp;a&nbsp;value&nbsp;to&nbsp;the&nbsp;sample&nbsp;at&nbsp;given&nbsp;index<br>
 &nbsp;<br>
