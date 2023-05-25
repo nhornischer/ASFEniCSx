@@ -1,5 +1,5 @@
 *.pyc
-parametrizedPoisson/
+bivariateAnalyticalTest/
 airfoilNavierStokes/
 figures/
 *.DS_Store
