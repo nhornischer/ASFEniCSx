@@ -1,6 +1,7 @@
 *.pyc
-bivariateAnalyticalTest/
-airfoilNavierStokes/
 figures/
 *.DS_Store
-*.json
+*.h5
+*.xdmf
+*.png
+*.pdf

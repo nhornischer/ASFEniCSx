@@ -1,6 +1,10 @@
 import numpy as np
+import os
 import json
 import scipy
+
+from mpi4py import MPI
+from abc import ABC, abstractmethod
 
 class NumpyEncoder(json.JSONEncoder):
     """Class for encoding numpy arrays to json
@@ -74,10 +78,11 @@ class utils:
         data_type = data["object_type"]
         if data_type == "sampling":
             object = sampling(data["M"], data["m"])
-            object.load(data["_array"])
+            object.load(data, overwrite=True)
         elif data_type=="clustering":
             object = clustering(data["M"], data["m"], data["k"], data["_max_iter"])
-            object.load(data["_array"], data["_centroids"], data["_clusters"])
+            object.load(data)
+        
         return object
 
 class sampling:
@@ -309,16 +314,16 @@ class sampling:
         """
         assert isinstance(filename, str), "Filename must be a string"
         with open(filename, "w") as f:
-            json.dump(self.__dict__, f, cls=NumpyEncoder)
+            json.dump(self.__dict__, f, cls=NumpyEncoder, indent = 3)
 
-    def load(self, data : np.ndarray, overwrite = False):
+    def load(self, data : dict, overwrite = False):
         """Loads array data into the sampling object
 
-        Loads array data into the sampling object. The array must have the shape (M,m) where M is the number of samples
+        Loads array data from dictionary into the sampling object. The array must have the shape (M,m) where M is the number of samples
         and m is the dimension of the parameter space.
 
         Args:
-            data (numpy.ndarray): Array containing the samples
+            data (dict): Dictionary containing numpy.ndarray data
             overwrite (bool, optional): If True, overwrites the existing samples. Default is False.
 
         Raises:
@@ -326,9 +331,12 @@ class sampling:
 
 
         """
-        assert data.shape == (self.M, self.m), "Array has wrong shape"
+        array = np.asarray(data["_array"])
+        assert array.shape == (self.M, self.m), "Array has wrong shape"
         if not hasattr(self, "_array") or overwrite:
-            self._array = np.asarray(data)
+            self._array = array
+            if "_values" in data:
+                self._values = np.asarray(data["_values"])
         else:
             raise AttributeError("Samples already exist. Use overwrite=True to overwrite them")
 
@@ -523,7 +531,7 @@ class clustering(sampling):
             raise ValueError("Cannot plot more than 3 dimensions")
         plt.savefig(filename, dpi=300, format="pdf")
 
-    def load(self, data : np.ndarray, centroids : np.ndarray, clusters : list, overwrite = False):
+    def load(self, data : dict, overwrite = False):
         """
         Loads the data into the clustering object
         
@@ -538,14 +546,16 @@ class clustering(sampling):
             ValueError: If the clusters have already been initialized and overwrite is False
             
         """
-        super().load(data)
+        super().load(data, overwrite=True)
         if hasattr(self, "_centroids") and not overwrite:
             raise ValueError("Centroids have already been initialized. Set overwrite=True to overwrite the data.")
         else:
-            self._centroids = np.asarray(centroids)
+            self._centroids = np.asarray(data["_centroids"])
         if hasattr(self, "_clusters") and not overwrite:
             raise ValueError("Clusters have already been initialized. Set overwrite=True to overwrite the data.")
+        else:
             self._clusters = []
+            clusters = data["_clusters"]
             for i in range(len(clusters)):
                 self._clusters.append(np.asarray(clusters[i]))
 
@@ -791,12 +801,12 @@ class functional:
 
         # If no values are given evaluate the function at the samples
         if values is None:
-            assert(np.shape(samples)[0] >= number_of_samples), "The number of samples must be greater or equal to the number of coefficients."
+            assert(np.shape(samples)[0] >= number_of_samples), f"The number of samples must be greater or equal to the number of coefficients. Is {np.shape(samples)[0]} but should be {number_of_samples}"
             values = np.zeros(number_of_samples)
             for i in range(number_of_samples):
                 values[i] = self.evaluate(samples[i,:])
         else:
-            assert len(exponents) <= len(values), "The number of samples must be greater or equal to the number of coefficients."
+            assert len(exponents) <= len(values), f"The number of samples must be greater or equal to the number of coefficients. Is {len(values)} but should be {len(exponents)}"
             assert np.shape(samples)[0] == len(values), "The number of samples and values must be equal"
             # Fake set the numer of calls to the function
             if method == 'LS':
@@ -1054,6 +1064,131 @@ class ASFEniCSx:
         """
         covariance = self.covariance(info = info)
         U, S = self.eigendecomposition(covariance)
+        self.S = S
         self.eigenvectors = U[:,0:self.n]
         self.eigenvalues = S[0:self.n]
         return (U[:,0:self.n], S[0:self.n]**2)
+    
+    def plot_eigenvalues(self):
+        """Plots the eigenvalues of the covariance matrix on a logarithmic scale
+
+        Raises:
+            ValueError: If the covariance matrix is not defined
+        """
+        if not hasattr(self, "S"):
+            raise ValueError("Covariance matrix not defined. Calculate it first.")
+        import matplotlib.pyplot as plt
+        plt.plot(self.S)
+        plt.yscale("log")
+        plt.xlabel("Index")
+        plt.xticks(np.arange(0, len(self.S), 1))
+        plt.ylabel("Eigenvalue")
+        plt.savefig("eigenvalues.png")
+    
+class FEniCSxSim(ABC):
+    """ Abstract Class for an arbitrary FEniCSx simulation
+
+    Attributes:
+    public:
+        comm (MPI.COMM_WORLD): MPI communicator
+        V (dolfinx.fem.FunctionSpace): Function space of the simulation
+        mesh (dolfinx.mesh.Mesh): Mesh of the simulation
+        _solution (dolfinx.fem.Function): Solution of the simulation
+        _problem (dolfinx.fem.LinearProblem): Problem of the simulation
+    """
+    def __init__(self):
+        self.comm = MPI.COMM_WORLD
+        pass
+
+    @abstractmethod
+    def quantity_of_interest(self, params):
+        """ Calculates the quantity of interest of the simulation
+
+        Args:
+            params (numpy.ndarray): Parameters of the simulation
+            
+        Returns:
+            float: Quantity of interest
+        """
+        pass
+
+    @abstractmethod
+    def create_mesh(self):
+        pass
+
+    @abstractmethod
+    def define_problem(self):
+        pass
+
+    @abstractmethod
+    def _update_problem(self, params):
+        pass
+
+    @abstractmethod
+    def _solve(self):
+        pass
+
+
+    def save_mesh(self, filename = "mesh.xdmf", overwrite = False):
+        """Saves the mesh to a file.
+
+        Args:
+            filename (str, optional): Name of the file. Defaults to "mesh.xdmf".
+            overwrite (bool, optional): Overwrite the file if it already exists. Defaults to False.
+
+        Raises:
+            ValueError: If the mesh is not defined.
+            FileExistsError: If the file already exists and overwrite is set to False.
+        """
+        from dolfinx.io import XDMFFile
+        if not hasattr(self, "mesh"):
+            raise ValueError("Mesh not defined. Create or load a mesh first.")
+        dir = os.path.dirname(__file__)
+        # Check if a file already exists
+        if os.path.isfile(os.path.join(dir,filename)) and not overwrite:
+            raise FileExistsError("File already exists. Set overwrite to True to overwrite the file.")
+        with XDMFFile(MPI.COMM_WORLD, os.path.join(dir,filename),"w") as mesh_file_xdmf:
+            mesh_file_xdmf.write_mesh(self.mesh)
+            if hasattr(self, "cell_tags"):
+                mesh_file_xdmf.write_meshtags(self.cell_tags)
+            if hasattr(self, "facet_tags"):
+                mesh_file_xdmf.write_meshtags(self.facet_tags)
+
+    def save_solution(self, filename = "solution.xdmf", index = 0, overwrite = False):
+        """Saves the solution to a file.
+
+        Args:
+            filename (str, optional): Name of the file. Defaults to "solution.xdmf".
+            index (int, optional): Index of the solution to be saved. Defaults to 0.
+            overwrite (bool, optional): Overwrite the file if it already exists. Defaults to False.
+
+        Raises:
+            ValueError: If the solution is not defined.
+            ValueError: If the mesh is not defined.
+            FileExistsError: If the file already exists and overwrite is set to False.
+        """
+        from dolfinx.io import XDMFFile
+        if not hasattr(self, "solution"):
+            raise ValueError("Solution not defined. Solve the problem first.")
+        if not hasattr(self, "mesh"):
+            raise ValueError("Mesh not defined. Create or load a mesh first.")
+        if os.path.isfile(filename) and not overwrite:
+            raise FileExistsError("File already exists. Set overwrite to True to overwrite the file.")
+        _solutions = self.solution()
+        xdmf = XDMFFile(self.mesh.comm, filename, "w")
+        xdmf.write_mesh(self.mesh)
+        for _solution in _solutions:
+                xdmf.write_function(_solution, index)
+        xdmf.close()
+
+    def solution(self):
+        """Returns a list of all the solution of the problem
+        
+        Returns:
+            list: List of all the solutions as dolfinx.Function
+        """
+        sol = self._solution
+        sol.name = "Solution"
+        return [sol]
+
+# TODO: Check if private/protected variales are returned as objects or as copys.
