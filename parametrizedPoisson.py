@@ -23,7 +23,12 @@ from dolfinx.fem import FunctionSpace
 from dolfinx.io import gmshio, XDMFFile
 from petsc4py.PETSc import ScalarType
 from scipy.sparse.linalg import eigsh
-import asfenicsx
+
+from ASFEniCSx.sampling import sampling
+from ASFEniCSx.functional import functional
+from ASFEniCSx.asfenicsx import ASFEniCSx
+from ASFEniCSx.FEniCSxSim import FEniCSxSim
+
 
 gdim = 2
 dir = os.path.dirname(__file__)
@@ -32,7 +37,7 @@ dir = os.path.dirname(__file__)
 if not os.path.exists(os.path.join(dir,"parametrizedPoisson")):
     os.makedirs(os.path.join(dir,"parametrizedPoisson"))
 
-class ParametrizedPoisson(asfenicsx.FEniCSxSim):
+class ParametrizedPoisson(FEniCSxSim):
     def __init__(self, beta): 
         super().__init__()  
         self.domain_markers = {"marker_Dirichlet": 1, "marker_Neumann": 2}
@@ -187,7 +192,7 @@ if __name__ == "__main__":
     simulation.save_solution(os.path.join(dir,"parametrizedPoisson/solution.xdmf"), overwrite=True)
 
     # Set the parameter values
-    samples = asfenicsx.sampling(M,m)
+    samples = sampling(M,m)
     progress = tqdm.autonotebook.tqdm(desc="Solving Problem", total=M)
     for i in range(M):
         value = simulation.quantity_of_interest(samples.extract(i))
@@ -195,11 +200,11 @@ if __name__ == "__main__":
         progress.update(1)
     progress.close()
 
-    cost = asfenicsx.functional(m, simulation.quantity_of_interest)
+    cost = functional(m, simulation.quantity_of_interest)
     cost.get_gradient_method('FD')
 
-    active_subspace = asfenicsx.ASFEniCSx(20, cost, samples)
+    active_subspace = ASFEniCSx(20, cost, samples)
 
-    U, S = active_subspace.random_sampling_algorithm(info=True)
+    U, S = active_subspace.random_sampling_algorithm()
     active_subspace.plot_eigenvalues(os.path.join(dir,"parametrizedPoisson/eigenvalues.png"))
 

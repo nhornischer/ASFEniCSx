@@ -1,8 +1,9 @@
 import numpy as np
 import os
-import scipy
 import matplotlib.pyplot as plt
-from asfenicsx import sampling, functional, ASFEniCSx
+from ASFEniCSx.sampling import sampling
+from ASFEniCSx.functional import functional
+from ASFEniCSx.asfenicsx import ASFEniCSx
 
 dir = os.path.dirname(__file__)
 
@@ -423,7 +424,7 @@ as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join
 as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap_FD_1e-1_2"), ylim=[1e-6,1])
 
 func.get_gradient_method('I')
-func.interpolation(samples, interpolation_method='LS', order = 1)
+func.interpolation(samples, interpolation_method='LS', order = 1, overwrite=True)
 as_I = ASFEniCSx(k, func, samples)
 U_I, S_I = as_I.random_sampling_algorithm()
 as_I.bootstrap(100)
@@ -534,4 +535,4 @@ as_I.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.joi
 as_I.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap2_LS_2"), ylim=[1e-6,1])
 
 
-plt.show()
+plt.close('all')

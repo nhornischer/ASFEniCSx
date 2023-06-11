@@ -1,6 +1,12 @@
 import os
 import gmsh
-from asfenicsx import FEniCSxSim
+
+import ASFEniCSx.utils as utils
+from ASFEniCSx.sampling import sampling, clustering
+from ASFEniCSx.functional import functional
+from ASFEniCSx.asfenicsx import ASFEniCSx
+from ASFEniCSx.FEniCSxSim import FEniCSxSim
+
 from mpi4py import MPI
 import numpy as np
 from petsc4py import PETSc
@@ -13,7 +19,6 @@ from dolfinx.io import XDMFFile, gmshio
 
 import math
 import os
-from asfenicsx import clustering, functional, ASFEniCSx, utils
 import tqdm.autonotebook
 
 class stationaryNavierStokes(FEniCSxSim):

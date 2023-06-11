@@ -1,7 +1,10 @@
 import numpy as np
 import math
 import os
-from asfenicsx import ASFEniCSx, clustering, functional
+
+from ASFEniCSx.sampling import clustering
+from ASFEniCSx.functional import functional
+from ASFEniCSx.asfenicsx import ASFEniCSx
 
 import matplotlib.pyplot as plt
 
