@@ -119,7 +119,7 @@ class ParametrizedPoisson(asfenicsx.FEniCSxSim):
         plt.xlabel("Eigenvalue Index")
         plt.ylabel("Eigenvalue")
         plt.title("Eigenvalues of the Correlation Matrix")
-        plt.savefig(os.path.join(dir,"parametrizedPoisson/eigenvalues.png"))
+        plt.savefig(os.path.join(dir,"parametrizedPoisson/Correlation_eigenvalues.png"))
         plt.close("all")
 
         """
@@ -201,5 +201,5 @@ if __name__ == "__main__":
     active_subspace = asfenicsx.ASFEniCSx(20, cost, samples)
 
     U, S = active_subspace.random_sampling_algorithm(info=True)
-    active_subspace.plot_eigenvalues()
+    active_subspace.plot_eigenvalues(os.path.join(dir,"parametrizedPoisson/eigenvalues.png"))
 
