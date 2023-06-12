@@ -1,7 +1,7 @@
 import numpy as np
 import json
 
-from ASFEniCSx.utils import NumpyEncoder
+from ASFEniCSx.utils import NumpyEncoder, denormalizer, normalizer, debug_info
 
 class sampling:
     """Class for sampling the domain of a parameter space
@@ -33,7 +33,6 @@ class sampling:
     public:
         random_uniform(overwrite : bool) -> None: Generates the samples using a uniform distribution  
         extract(index : int) -> numpy.ndarray: Extracts a single sample from the array
-        replace(index : int, sample : numpy.ndarray) -> None: Replaces a single sample in the array
         samples() -> numpy.ndarray: Returns the sampling array
         assign_values(f : callable) -> None: Assigns values to the samples using a function
         assign_value(index : int, value : float) -> None: Assigns a value to a single sample
@@ -52,7 +51,7 @@ class sampling:
     Contributors:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
-    def __init__(self, M : int, m : int, debug=True):
+    def __init__(self, M : int, m : int, debug=True) -> None:
         """Constructor for the sampling object
 
         Sets the sampling attributes M and m to the values passed to the
@@ -93,60 +92,44 @@ class sampling:
             raise AttributeError("Samples already exist. Use overwrite=True to overwrite them")
     
     def extract(self, index : int):
-        """Extracts a single sample from the array
+        """Extracts a single sample from the array and denormalizes it.
         
         Args:   
             index (int): Index of the sample to be extracted
         
         Returns:
-            numpy.ndarray: The sample at the given index
+            numpy.ndarray: Denormalized sample
 
         Raises:
             AssertionError: If the index is out of bounds
         """
         assert 0<= index < self.M, "Index out of bounds"
-        return self._array[index,:]
-    
-    def replace(self, index : int, sample : np.ndarray):
-        """Replaces a single sample in the array
-        
-        Args:
-            index (int): Index of the sample to be replaced
-            sample (numpy.ndarray): The new sample
-        
-        Raises:
-            AssertionError: If the index is out of bounds
-        """
-        assert 0<= index < self.M, "Index out of bounds"
-        assert sample.shape == (self.m,), "Sample has wrong shape"
-        self._array[index,:] = sample
 
-    def add_sample(self, sample : np.ndarray or None):
-        """Adds a sample to the sampling array
-
-        Args:
-            sample (numpy.ndarray or None): The sample to be added
-
-        Raises:
-            AssertionError: If the sample has the wrong shape
-        """
-        if sample is None:
-            sample = np.random.uniform(-1, 1, self.m)
+        if hasattr(self, "_bounds"):
+            sample = denormalizer(self._array[index,:], self._bounds)
+            return sample
         else:
-            assert sample.shape == (self.m,), "Sample has wrong shape"
-        self._array = np.vstack((self._array, sample))
-        self.M += 1
-        pass
+            return self._array[index,:]
+        
+    def set_domainBounds(self, bounds : np.ndarray):
+        """Sets the boundaries of the original domain
+        
+        Args:
+            bounds (numpy.ndarray): Array containing the boundaries of the original unnormalized domain
+        """
+        assert bounds.shape == (self.m,2), "Bounds have wrong shape"
+        self._bounds = bounds
     
     def samples(self):
-        """Returns the sampling array
+        """Returns the normalized sampling array
         
         Returns:
             numpy.ndarray: The sampling array
         """
+        debug_info(self._debug, "WARNING: THE NORMALIZED SAMPLING ARRAY IS RETURNED. USE THE EXTRACT METHOD TO GET A DENORMALIZED SAMPLE")
         return self._array
 
-    def assign_values(self, f : callable):
+    def assign_values(self, f : callable, overwrite = False):
         """Assigns values to the sampling object
 
         Assigns values to the sampling object by evaluating the given function at the samples.
@@ -158,7 +141,12 @@ class sampling:
             TypeError: If the function is not callable
         """
         assert callable(f), "Function must be callable"
-        self._values = np.apply_along_axis(f, 1, self._array)
+        if hasattr(self, "_values") and not overwrite:
+            raise AttributeError("Values already exist. Use overwrite=True to overwrite them")
+        else:
+            self._values = np.zeros(self.M)
+            for i in range(self.M):
+                self._values[i] = f(self.extract(i))
 
     def assign_value(self, index : int, value : float):
         """Assigns a value to the sample at given index
@@ -205,7 +193,7 @@ class sampling:
         return self._values
     
     def index(self, sample : np.ndarray):
-        """ Returns the index of the given sample in the sampling array
+        """ Returns the index of the given normalized sample in the sampling array
         
         Args:
             sample (numpy.ndarray): The sample
@@ -254,9 +242,14 @@ class sampling:
         array = np.asarray(data["_array"])
         assert array.shape == (self.M, self.m), "Array has wrong shape"
         if not hasattr(self, "_array") or overwrite:
+            # Check if the array is normalized
+            if np.any(array > 1) or np.any(array < -1):
+                raise ValueError("Array is not normalized")
             self._array = array
             if "_values" in data:
                 self._values = np.asarray(data["_values"])
+            if "_bounds" in data:
+                self._bounds = np.asarray(data["_bounds"])
         else:
             raise AttributeError("Samples already exist. Use overwrite=True to overwrite them")
 
@@ -264,7 +257,7 @@ class clustering(sampling):
     """Class for creating clustered samples of a parameter space as a subclass of sampling
 
     This class produces as sampling object that contains clustered samples of a parameter space in addition
-    to the unclustered data. The clustering is done using the k-means algorithm.
+    to the unclustered data. The clustering is done using the k-means algorithm and done on the normalized data.
 
     Attributes:
     public:
@@ -325,8 +318,8 @@ class clustering(sampling):
         _iter=0
         while np.not_equal(self._centroids, _prev_centroids).any() and _iter < self._max_iter:
             _prev_centroids = self._centroids.copy()
-            _clusters = self.assign_clusters(self._array)
-            self.update_centroids(_clusters)
+            _clusters = self._assign_clusters(self._array)
+            self._update_centroids(_clusters)
             _iter += 1
         self._clusters = _clusters
     
@@ -334,47 +327,41 @@ class clustering(sampling):
         """Returns the clusters
 
         Returns:
-            list: List of cluster containing a list of the indices of the samples belonging to the clusters
+            list: List of clusters containing a list of the indices of the samples belonging to the clusters
         """
         return self._clusters
-    
-    def centroids(self):
-        """Returns the centroids of the clusters
 
-        Returns:
-            numpy.ndarray: Array containing the centroids of the clusters
-        """
-        return self._centroids
-
-    def assign_clusters(self, data : np.ndarray):
+    def _assign_clusters(self, data : np.ndarray):
         """Assigns the samples to the clusters
 
         This method can be used to assign samples to the clusters and is called by the detect method.
-        It is possible to assign a arbitrary data set to the defined clusters, but in this case the sample space
-        is not updated.
         
         Args:
-            data (numpy.ndarray): Array containing the samples
+            data (numpy.ndarray): Array containing the samples but has to be normalized
         
         Returns:
             List: List of the clusters containing a list of the indices of the samples belonging to the clusters
 
         Raises:
             AssertionError: If the centroids have not been initialized or the dimension of the data does not match the dimension of the parameter space
+
+        Note:
+            It is possible to use this method outside the class to assign a arbitrary data set to the defined clusters, but in this case the sample space
+            is not updated. To update the sample space, use the detect method. Using this method outside the class is not recommended.
         """
         assert hasattr(self, "_centroids"), "Centroids have not been initialized"
         assert np.shape(data)[1] == self.m, "Dimension of data does not match dimension of parameter space"
         _clusters=[[] for _ in range(self.k)]
         for i,x in enumerate(data):
-            idx = self.cluster_index(x)
+            idx = self._cluster_index(x)
             _clusters[idx].append(i)
         return _clusters
 
-    def cluster_index(self, x : np.ndarray):
+    def _cluster_index(self, x : np.ndarray):
         """Returns the index of the cluster to which the sample belongs
 
         Args:
-            x (numpy.ndarray): Sample to be assigned to a cluster
+            x (numpy.ndarray): Normalized sample to be assigned to a cluster
 
         Returns:
             int: Index of the cluster to which the sample belongs
@@ -388,16 +375,42 @@ class clustering(sampling):
         distances = np.linalg.norm(self._centroids-x, axis=1)
         cluster_idx = np.argmin(distances)
         return cluster_idx
+    
+    def obtain_index(self, x : np.ndarray):
+        """Returns the index of the sample in the array
 
-    def update_centroids(self, _clusters : list):
+        Args:
+            x (numpy.ndarray): Sample to be assigned to a cluster
+
+        Returns:
+            int: Index of the sample in the array
+
+        Raises:
+            AssertionError: If the centroids have not been initialized
+            AssertionError: If the dimension of the data does not match the dimension of the parameter space
+        """
+        assert hasattr(self, "_centroids"), "Centroids have not been initialized"
+        assert np.shape(x)[0] == self.m, "Dimension of data does not match dimension of parameter space"
+        
+        # Normalize sample
+        if hasattr(self, "_bounds"):
+            x = (x-self._bounds[0])/(self._bounds[1]-self._bounds[0])
+        distances = np.linalg.norm(self._array-x, axis=1)
+        idx = np.argmin(distances)
+        return idx
+
+    def _update_centroids(self, _clusters : list):
         """Updates the centroids of the clusters
 
         This method can be used to update the centroids of the clusters and is called by the detect method.
-        It is not recommended to use this method on its own, as it does not assign the samples to the clusters,
-        but changes the centroids of the cluster.
 
         Args:
             _clusters (list): List of clusters of lists containing the indices of the samples belonging to the clusters
+
+        Note:
+            It is possible to use this method outside the class to update the centroids of the clusters, but in this case the sample space
+            is not updated, but the centroids are. To update the sample space, use the detect method. Using this method outside the class
+            is not recommended.
         """
         for i, centroid in enumerate(self._centroids):
             cluster_data = np.asarray([self.extract(idx) for idx in _clusters[i]])

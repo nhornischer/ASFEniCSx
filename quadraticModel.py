@@ -57,13 +57,34 @@ eigs_C = np.linalg.eigvalsh(C)
 idx = eigs_C.argsort()[::-1]
 eigs_C = eigs_C[idx]
 
+grads = np.asarray([A @ samples.extract(i) for i in range(M)])
+# Define the function and its gradient
+function = lambda x: 0.5 * x.T @ A @ x
+grad = lambda x: A @ x
+
+# Compute the true gradients
+func = functional(m, function)
+func.get_derivative(grad)
+func.get_gradient_method('A')
+
+test_asfenicsx = ASFEniCSx(k, func, samples)
+cov = test_asfenicsx.covariance(grads)
+eigs_cov = np.linalg.eigvalsh(cov)
+idx = eigs_cov.argsort()[::-1]
+eigs_cov = eigs_cov[idx]
+
 eigs_A = np.linalg.eigvalsh(A)
 idx = eigs_A.argsort()[::-1]
 eigs_A = eigs_A[idx]
 
+_, eigs_asfenicsx = test_asfenicsx.random_sampling_algorithm()
+
 ax = plt.figure().gca()
 ax.plot(range(1,m+1),eigs_C, marker="o", fillstyle="none", label="eig(C)")
-ax.plot(range(1,m+1),eigenvalues_constant**2, marker="*", fillstyle="none", linestyle="--", label="eig(A)^2")
+ax.plot(range(1,m+1),eigs_cov, marker="+", fillstyle="none", label="eig(cov)")
+ax.plot(range(1,m+1),eigs_A**2, marker="*", fillstyle="none", label="eig(A)^2")
+ax.plot(range(1,m+1),eigenvalues_constant**2, marker="*", fillstyle="none", linestyle="--", label="eigs^2")
+ax.plot(range(1,m+1),eigs_asfenicsx, marker="x", fillstyle="none", linestyle="--", label="eigs_asfenicsx")
 ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 plt.yscale('log')
 plt.grid()
@@ -71,6 +92,10 @@ plt.xlabel("Eigenvalue Index")
 plt.ylabel("Eigenvalue")
 plt.title("Eigenvalues of the Correlation Matrix")
 plt.legend()
+
+
+plt.show()
+exit()
 
 # TODO: Why are the eigenvalues of C not equivalent to the squared eigenvalues of A when they should be
 

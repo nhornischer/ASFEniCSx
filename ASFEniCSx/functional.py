@@ -52,6 +52,11 @@ class functional:
         >>> func.gradient(x)
         array([1.9999, 3.9999])
 
+    Notes:
+        The function must be defined in the original parameter domain.
+        The transformation between the normalized input and the original parameter domain is done in the sampling class
+        and at the relevant places in the ASFEniCSx class.
+
     Version:
         0.1
     Contributors:
@@ -119,6 +124,7 @@ class functional:
         if self._debug:
             print(f"Derivative set to {dfdx}")
         self._derivative=dfdx
+        self.get_gradient_method('A')
 
     def get_gradient_method(self, method : str):
         """Sets the method used to calculate the gradient of the function
@@ -164,7 +170,7 @@ class functional:
 
         # Calculates the global interpolant
         if not clustering:
-            _data = sampling.samples()
+            _data = np.asarray([sampling.extract(i) for i in range(sampling.M)])
             if hasattr(sampling, "_values"):
                 _values = sampling.values()
             else:
@@ -351,6 +357,7 @@ class functional:
         if self.gradient_method == "FD":
             return self._finite_differences(x, order = order, **kwargs)
         elif self.gradient_method == "A":
+            debug_info(self._debug, "Calculating gradient with analytical method")
             return self._derivative(x)
         elif self.gradient_method == "I":
             if hasattr(self, '_interpolant') and not self.use_clusters:
@@ -358,7 +365,7 @@ class functional:
             elif hasattr(self, '_interpolants') and self.use_clusters:
                 if sampling == None or not hasattr(sampling, '_clusters'):
                     raise ValueError("No clusters given. Construct global interpolant or specify cluster.")
-                cluster_idx = sampling.cluster_index(x)
+                cluster_idx = sampling.obtain_index(x)
                 return self._derivatives[cluster_idx](x)
             else:
                 raise ValueError("No interpolant found")

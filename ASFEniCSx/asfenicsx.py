@@ -66,6 +66,16 @@ class ASFEniCSx:
         self.samples = samples
         self._debug = debug
 
+    def eigenvalues(self):
+        """Returns the eigenvalues of the covariance matrix
+
+        Returns:
+            np.ndarray: Eigenvalues of the covariance matrix
+        """
+        if not hasattr(self, 'eigenvalues'):
+            raise ValueError("Eigenvalues not calculated yet. Run the random sampling algorithm first.")
+        return np.copy(self._eigenvalues)
+
     def evaluate_gradients(self, **kwargs):
         """Evaluates the gradients of the function at the samples
 
@@ -81,6 +91,12 @@ class ASFEniCSx:
         for i in range(self.samples.M):
             gradients[i] = self.function.gradient(self.samples.extract(i), self.samples, **kwargs)
         self.gradients = gradients
+
+        # Normalize the gradients accroding to the chain rule with the bounds from the sampling space to the range [-1, 1]
+        if hasattr(self.samples, '_bounds'):
+            for i in range(self.samples.M):
+                for j in range(self.samples.m):
+                    gradients[i,j] = gradients[i,j] * (self.samples._bounds[j,1] - self.samples._bounds[j,0]) / 2
         return gradients
 
     def covariance(self, gradients : np.ndarray):
@@ -99,6 +115,7 @@ class ASFEniCSx:
         for i in range(self.samples.M):
             covariance += np.outer(gradients[i,:], gradients[i,:])
         covariance = covariance / self.samples.M
+
         return covariance
     
     def random_sampling_algorithm(self):
@@ -115,6 +132,7 @@ class ASFEniCSx:
         # Evaluate the gradients of the function at the samples
         debug_info(self._debug, "Constructing the active subspace using the random sampling algorithm")
         if not hasattr(self, 'gradients'):
+            debug_info(self._debug, "Evaluating gradients for active subspace construction")
             self.evaluate_gradients()
         else:
             print("WARNING: Gradients already evaluated, skipping evaluation. Make sure the gradients are up to date.")
@@ -125,10 +143,12 @@ class ASFEniCSx:
         # Calculate the eigenvalues and eigenvectors of the covariance matrix
         S, U = self.calculate_eigenpairs(convariance_matrix)
 
-        self.eigenvalues = S
-        self.eigenvectors = U
+        self._eigenvalues = S
+        self._eigenvectors = U
 
-        return (self.eigenvectors, self.eigenvalues)
+        debug_info(self._debug, f"Active subspace constructed")
+
+        return (self._eigenvectors, self._eigenvalues)
     
     def partition(self, n : int):
         """Partitions the active subspace into two subspaces of dimension n and m-n
@@ -140,8 +160,8 @@ class ASFEniCSx:
             np.ndarray: Matrix containing the active subspace of dimension n
             np.ndarray: Matrix containing the inactive subspace of dimension m-n
         """
-        W1 = self.eigenvectors[:,:n]
-        W2 = self.eigenvectors[:,n:]
+        W1 = self._eigenvectors[:,:n]
+        W2 = self._eigenvectors[:,n:]
         return (W1, W2)
     
     def bootstrap(self, M_boot : int):
@@ -172,7 +192,7 @@ class ASFEniCSx:
             S, U = self.calculate_eigenpairs(self.covariance(bootstrap_replicate))
 
             for j in range(self.samples.m-1):
-                subspace_distances[j,i] = np.linalg.norm(np.dot(self.eigenvectors[:,:j+1].T, U[:,j+1:]), ord=2)
+                subspace_distances[j,i] = np.linalg.norm(np.dot(self._eigenvectors[:,:j+1].T, U[:,j+1:]), ord=2)
             eigenvalues[:,i] = S
         sub_max = np.max(subspace_distances, axis=1)
         sub_min = np.min(subspace_distances, axis=1)
@@ -185,6 +205,8 @@ class ASFEniCSx:
         self.e_boot = [e_max, e_min]
         self.sub_boot = [sub_max, sub_min, sub_mean]
 
+        debug_info(self._debug, f"Bootstrap values calculated")
+
         return [e_max, e_min], [sub_max, sub_min, sub_mean]
     
     def calculate_eigenpairs(self, matrix : np.ndarray):
@@ -194,18 +216,18 @@ class ASFEniCSx:
             matrix (np.ndarray): Matrix to calculate the eigenvalues and eigenvectors of
 
         Returns:
-            np.ndarray: Matrix of eigenvectors stored in the columns
             np.ndarray: Vector of eigenvalues
+            np.ndarray: Matrix of eigenvectors stored in the columns
         """
-        S, U = np.linalg.eigh(matrix)
-        S = abs(S)
-        idx = S.argsort()[::-1]
-        eigenvalues = S[idx]
-        eigenvectors = U[:,idx]
-        normalization = np.sign(U[0,:])
+        e, W = np.linalg.eigh(matrix)
+        e = abs(e)
+        idx = e.argsort()[::-1]
+        e = e[idx]
+        W = W[:,idx]
+        normalization = np.sign(W[0,:])
         normalization[normalization == 0] = 1
-        eigenvectors = eigenvectors * normalization
-        return eigenvalues, eigenvectors
+        W = W * normalization
+        return e, W
     
     def plot_eigenvalues(self, filename = "eigenvalues.png", true_eigenvalues = None, ylim=None):
         """Plots the eigenvalues of the covariance matrix on a logarithmic scale
@@ -216,7 +238,7 @@ class ASFEniCSx:
         Raises:
             ValueError: If the covariance matrix is not defined
         """
-        if not hasattr(self, "eigenvectors"):
+        if not hasattr(self, "_eigenvectors"):
             raise ValueError("Eigendecomposition of the covariance matrix is not defined. Calculate it first.")
         import matplotlib.pyplot as plt
         fig = plt.figure(filename)
@@ -224,8 +246,9 @@ class ASFEniCSx:
         ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
         if true_eigenvalues is not None:
             ax.plot(range(1, self.k+1), true_eigenvalues[:self.k], marker="o", fillstyle="none", label="True")
-        ax.plot(range(1, self.k+1), self.eigenvalues[:self.k], marker="x", fillstyle="none", label="Est")
+        ax.plot(range(1, self.k+1), self._eigenvalues[:self.k], marker="x", fillstyle="none", label="Est")
         if hasattr(self, "e_boot"):
+            debug_info(self._debug, "Plotting bootstrap bounds for eigenvalues")
             ax.fill_between(range(1, self.k+1), self.e_boot[0][:self.k], self.e_boot[1][:self.k], alpha=0.5, label = "BI")
         plt.yscale("log")
         plt.xlabel("Index")
@@ -245,17 +268,18 @@ class ASFEniCSx:
         Raises:
             ValueError: If the covariance matrix is not defined
         """
-        if not hasattr(self, "eigenvectors"):
+        if not hasattr(self, "_eigenvectors"):
             raise ValueError("Eigendecomposition of the covariance matrix is not defined. Calculate it first.")
         import matplotlib.pyplot as plt
         fig = plt.figure(filename)
         ax = fig.gca()
         ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
         if true_subspace is not None:
-            ax.plot(range(1, self.k+1), true_subspace[:self.k], marker="o", fillstyle="none", label="True")
-        ax.plot(range(1, self.k+1), self.sub_boot[2][:self.k], marker="x", fillstyle="none", label="Est")
+            ax.plot(range(1, self.k), true_subspace[:self.k-1], marker="o", fillstyle="none", label="True")
+        ax.plot(range(1, self.k), self.sub_boot[2][:self.k-1], marker="x", fillstyle="none", label="Est")
         if hasattr(self, "sub_boot"):
-            ax.fill_between(range(1, self.k+1), self.sub_boot[0][:self.k], self.sub_boot[1][:self.k], alpha=0.5, label = "BI")
+            debug_info(self._debug, "Plotting bootstrap bounds for subspace distances")
+            ax.fill_between(range(1, self.k), self.sub_boot[0][:self.k-1], self.sub_boot[1][:self.k-1], alpha=0.5, label = "BI")
         plt.xlabel("Subspace Dimension")
         plt.yscale("log")
         plt.ylabel("Subspace Error")

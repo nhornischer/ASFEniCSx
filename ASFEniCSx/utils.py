@@ -20,6 +20,7 @@ class NumpyEncoder(json.JSONEncoder):
     Contributors:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
+
     def default(self, obj : object):
         """Returns a converted object that can be converted to json
         
@@ -77,3 +78,78 @@ def debug_info(debug : bool, message : str):
     if debug:
         frameinfo = getframeinfo(currentframe().f_back)
         print(f"DEBUG: File \"{frameinfo.filename}\", line {frameinfo.lineno}, module {frameinfo.function} \n\t{message}")    
+
+def normalizer(sample : np.ndarray, bounds : np.ndarray):
+    """Normalizes a sample
+    
+    Normalizes a sample to the interval [-1,1] using the bounds
+    
+    Args:
+        sample (np.ndarray): The sample to be normalized. Has either shape (M, m) or (m,).
+        bounds (np.ndarray): The bounds used for normalization. Has shape (m,2).
+        
+    Returns:
+        np.ndarray: The normalized sample
+    """
+
+    # Make sample 2D if it is 1D
+    if len(sample.shape) == 1:
+        sample = sample.reshape(1, -1)
+    
+    # Check if bounds are valid
+    if bounds.shape[0] != sample.shape[1]:
+        raise ValueError("Bounds do not match sample dimensions")
+    
+    # Check if bounds are valid
+    if np.any(bounds[:,0] > bounds[:,1]):
+        raise ValueError("Bounds are invalid")
+    
+    # Check if sample is valid
+    if np.any(sample < bounds[:,0]) or np.any(sample > bounds[:,1]):
+        raise ValueError("Sample is invalid")
+    
+    # Normalize
+    sample = 2*(sample - bounds[:,0])/(bounds[:,1] - bounds[:,0]) - 1
+
+    # Make sample 1D if it is unnecessary 2D
+    if sample.shape[0] == 1:
+        sample = sample.reshape(-1)
+    return sample
+
+def denormalizer(sample : np.ndarray, bounds : np.ndarray):
+    """Denormalizes a sample
+    
+    DEnormalizes a sample from the interval [-1,1] using the bounds
+    
+    Args:
+        sample (np.ndarray): The sample to be unnormalized. Has either shape (M, m) or (m, ).
+        bounds (np.ndarray): The bounds used for unnormalization. Has shape (m,2).
+        
+    Returns:
+        np.ndarray: The unnormalized sample
+    """
+
+    # Make sample 2D if it is 1D
+    if len(sample.shape) == 1:
+        sample = sample.reshape(1, -1)
+
+    # Check if bounds are valid
+    if bounds.shape[0] != sample.shape[1]:
+        raise ValueError("Bounds do not match sample dimensions")
+    
+    # Check if bounds are valid
+    if np.any(bounds[:,0] > bounds[:,1]):
+        raise ValueError("Bounds are invalid")
+    
+    # Check if sample is valid
+    if np.any(sample < -1) or np.any(sample > 1):
+        raise ValueError("Sample is invalid")
+    
+    # Unnormalize
+    sample = 0.5*(sample + 1)*(bounds[:,1] - bounds[:,0]) + bounds[:,0]
+
+    # Make sample 1D if it is unnecessary 2D
+    if sample.shape[0] == 1:
+        sample = sample.reshape(-1)
+
+    return sample
