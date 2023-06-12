@@ -160,8 +160,17 @@ class ASFEniCSx:
             np.ndarray: Matrix containing the active subspace of dimension n
             np.ndarray: Matrix containing the inactive subspace of dimension m-n
         """
+        # Check if the eigenvalues are already calculated
+        if not hasattr(self, 'eigenvalues'):
+            raise("Eigenvalues not calculated yet. Run the random sampling algorithm first.")
+
+        # Check if the dimension of the active subspace is smaller than the dimension of the parameter space
+        if n > self.samples.m:
+            raise("Dimension of the active subspace must be smaller than the dimension of the parameter space.")
+
         W1 = self._eigenvectors[:,:n]
         W2 = self._eigenvectors[:,n:]
+        self.W1 = W1
         return (W1, W2)
     
     def bootstrap(self, M_boot : int):
@@ -290,6 +299,84 @@ class ASFEniCSx:
         plt.savefig(filename)
         plt.close()
 
+    def plot_sufficient_summary(self, filename = "sufficient_summary"):
 
+        # TODO: This looks strange
+        # Compute the active variable values
+        if not hasattr(self, "W1"):
+            raise("The active subspace is not defined. If the eigenpairs of the covariance matrix are already calculated, call partition() first.")
+        
+        active_variable_values = self.samples.samples().dot(self.W1)
+        if hasattr(self.samples, "_values"):
+            values = self.samples.values()
+        else:
+            values = np.asarray([self.function.evaluate(self.samples.extract(i)) for i in range(self.samples.M)])
+
+        n = active_variable_values.shape[1]
+        import matplotlib.pyplot as plt
+
+        for i in range(min(n, 2)):
+            if n > 1:
+                fig = plt.figure(filename + f"univariate_{i+1}")
+            else:
+                fig = plt.figure(filename + f"univariate")
+            ax = fig.gca()
+            ax.scatter(active_variable_values[:,i], values)
+            if n > 1:
+                plt.xlabel(f"Active Variable {i+1}")
+            else:
+                plt.xlabel("Active Variable")
+            plt.ylabel("Function Value")
+            plt.grid()
+            if n > 1:
+                plt.savefig(filename + f"univariate_{i+1}")
+            else:
+                plt.savefig(filename + f"univariate")
+            plt.close()
+        
+        if n > 1 and n<=2:
+            plt.figure(filename + f"bivariate")
+            plt.axes().set_aspect('equal')
+            plt.scatter(active_variable_values[:,0], active_variable_values[:,1], c=values, vmin=np.min(values), vmax=np.max(values) )
+            plt.xlabel("Active Variable 1")
+            plt.ylabel("Active Variable 2")
+            ymin = 1.1*np.min([np.min(active_variable_values[:,0]) ,np.min( active_variable_values[:,1])])
+            ymax = 1.1*np.max([np.max(active_variable_values[:,0]) ,np.max( active_variable_values[:,1])])
+            plt.axis([ymin, ymax, ymin, ymax])    
+            plt.grid()
+            
+            plt.colorbar()
+            plt.savefig(filename + f"bivariate")
+    
+            plt.close()
+
+    def plot_eigenvectors(self, filename = "eigenvectors.png", true_eigenvectors = None, n = None):
+        """Plots the eigenvectors of the covariance matrix
+
+        Args:
+            filename (str, optional): Filename of the plot. Defaults to "eigenvectors.png".
+            true_eigenvectors (np.ndarray, optional): True eigenvectors of the covariance matrix. Defaults to None.
+        Raises:
+            ValueError: If the covariance matrix is not defined
+        """
+        if n is None:
+            n = self.k
+        if not hasattr(self, "_eigenvectors"):
+            raise ValueError("Eigendecomposition of the covariance matrix is not defined. Calculate it first.")
+        import matplotlib.pyplot as plt
+        fig = plt.figure(filename)
+        ax = fig.gca()
+        ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+        for i in range(n):
+            if true_eigenvectors is not None:
+                ax.plot(range(1, self.k+1), true_eigenvectors[:,i], marker="o", fillstyle="none", label=f"True ({i+1}))")
+            ax.plot(range(1, self.k+1), self._eigenvectors[:,i], marker="x", fillstyle="none", label=f"Est ({i+1})")
+        plt.xlabel("Index")
+        plt.ylim([-1,1])
+        plt.ylabel("Eigenvector")
+        plt.legend()
+        plt.grid()
+        plt.savefig(filename)
+        plt.close()
 
 # TODO: Check if private/protected variales are returned as objects or as copys.

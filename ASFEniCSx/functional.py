@@ -189,6 +189,7 @@ class functional:
             self._interpolants = []
             self._derivatives = []
             for index_list in sampling.clusters():
+                debug_info(self._debug, f"Calculating interpolant for cluster {index_list}")
                 _data = np.asarray([sampling.extract(i) for i in index_list])
                 # Check if values have already been calculated
                 if hasattr(sampling, "_values"):
@@ -198,7 +199,7 @@ class functional:
                 coefficients, exponents = self.multivariate_interpolation(_data, _values, order = order, method = interpolation_method) 
                 self._interpolants.append(self.multivariate_polynomial(coefficients, exponents))
                 self._derivatives.append(self.multivariate_polynomial_derivative(coefficients, exponents))
-
+            debug_info(self._debug, f"Calculated {len(self._interpolants)} interpolants")
     def multivariate_interpolation(self, samples : np.ndarray, values : np.ndarray, order = 2, method = 'default'):
         """Calculates the coefficients of a multivariate polynomial interpolation.
 
@@ -330,7 +331,7 @@ class functional:
         elif hasattr(self, '_interpolants') and self.use_clusters:
             if sampling is None or not hasattr(sampling, '_clusters'):
                 raise ValueError("No clusters given. Construct global interpolant or specify cluster.")
-            cluster_idx = sampling.cluster_index(x)
+            cluster_idx = sampling.obtain_index(x)
             return self._interpolants[cluster_idx](x)
         else:
             raise ValueError("No interpolant found")

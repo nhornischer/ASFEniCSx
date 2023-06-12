@@ -191,6 +191,8 @@ if __name__ == "__main__":
     print(simulation.quantity_of_interest(sample))
     simulation.save_solution(os.path.join(dir,"parametrizedPoisson/solution.xdmf"), overwrite=True)
 
+    # TODO: Check if the simulation is correct especially the correlation matrix
+
     # Set the parameter values
     samples = sampling(M,m)
     progress = tqdm.autonotebook.tqdm(desc="Solving Problem", total=M)

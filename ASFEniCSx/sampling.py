@@ -394,9 +394,12 @@ class clustering(sampling):
         
         # Normalize sample
         if hasattr(self, "_bounds"):
-            x = (x-self._bounds[0])/(self._bounds[1]-self._bounds[0])
-        distances = np.linalg.norm(self._array-x, axis=1)
+            x = normalizer(x, self._bounds)
+        distances = np.linalg.norm(self._centroids-x, axis=1)
         idx = np.argmin(distances)
+        # Check if index is valid
+        if idx >= self.k:
+            raise ValueError("Index is not valid")
         return idx
 
     def _update_centroids(self, _clusters : list):

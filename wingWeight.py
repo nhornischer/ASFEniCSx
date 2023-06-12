@@ -87,8 +87,11 @@ asfenicsx.bootstrap(100)
 
 asfenicsx.plot_eigenvalues(os.path.join(dir,"wingWeight","analytical_eigenvalues.png"))
 asfenicsx.plot_subspace(os.path.join(dir,"wingWeight","analytical_subspace.png"))
-
+asfenicsx.plot_eigenvectors(os.path.join(dir,"wingWeight","analytical_eigenvectors.png"), n = 2)
 asfenicsx.partition(2)
+asfenicsx.plot_sufficient_summary(os.path.join(dir,"wingWeight","analytical_sufficient_summary"))
+
+# TODO: These plots look weird
 
 func.interpolation(samples, order = 1, interpolation_method = "LS")
 func.get_gradient_method("I")
@@ -98,6 +101,5 @@ asfenicsx.random_sampling_algorithm()
 asfenicsx.bootstrap(100)
 asfenicsx.plot_eigenvalues(os.path.join(dir,"wingWeight","globalLinear_eigenvalues.png"))
 asfenicsx.plot_subspace(os.path.join(dir,"wingWeight","globalLinear_subspace.png"))
-
 
 plt.show()

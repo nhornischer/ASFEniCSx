@@ -64,7 +64,7 @@ if __name__ == '__main__':
     scalarMap = cm.ScalarMappable(colors.Normalize(vmin=0, vmax=samples.k),cmap=cmap)
     for x in x_range:
         for y in y_range:
-            plt.plot(x,y,'o', color = scalarMap.to_rgba(samples.cluster_index(np.asarray([x,y]))))
+            plt.plot(x,y,'o', color = scalarMap.to_rgba(samples.obtain_index(np.asarray([x,y]))))
     plt.savefig(os.path.join(dir,"figures/2D_clustering.pdf"))
     
 
@@ -418,7 +418,7 @@ if __name__ == '__main__':
     plt.savefig("figures/2D_function.pdf")
     plt.clf()
 
-    samples.assign_values(noisy_evaluate_f)
+    samples.assign_values(noisy_evaluate_f, overwrite = True)
 
     # Define the cost function
     cost = functional(2, noisy_evaluate_f)

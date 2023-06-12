@@ -92,10 +92,7 @@ plt.xlabel("Eigenvalue Index")
 plt.ylabel("Eigenvalue")
 plt.title("Eigenvalues of the Correlation Matrix")
 plt.legend()
-
-
-plt.show()
-exit()
+plt.savefig(os.path.join(dir,"quadraticModel/SanityCheck.pdf"))
 
 # TODO: Why are the eigenvalues of C not equivalent to the squared eigenvalues of A when they should be
 
