@@ -295,6 +295,7 @@ if __name__ == '__main__':
     U, S = asfenicsx.random_sampling_algorithm()
 
     cost.get_gradient_method('FD')
+    asfenicsx.evaluate_gradients()
     U_FD, S_FD = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for FD: {cost.number_of_calls()}")
     print(f"\tError FD (EV, EW): {np.linalg.norm(U-U_FD)} , {np.linalg.norm(S-S_FD)}")
@@ -302,6 +303,7 @@ if __name__ == '__main__':
 
     cost.interpolation(samples, overwrite = True)
     cost.get_gradient_method('I')
+    asfenicsx.evaluate_gradients()
     U_I, S_I = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for interpolation: {cost.number_of_calls()}")
     print(f"\tError I (EV, EW): {np.linalg.norm(U-U_I)} , {np.linalg.norm(S-S_I)}")
@@ -309,6 +311,7 @@ if __name__ == '__main__':
 
     cost.interpolation(samples, interpolation_method = "LS", overwrite = True)
     cost.get_gradient_method('I')
+    asfenicsx.evaluate_gradients()
     U_LS, S_LS = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for least squares interpolation: {cost.number_of_calls()}")
     print(f"\tError LS (EV, EW): {np.linalg.norm(U-U_LS)} , {np.linalg.norm(S-S_LS)}")
@@ -316,6 +319,7 @@ if __name__ == '__main__':
 
     cost.interpolation(samples, overwrite = True, clustering = True)
     cost.get_gradient_method('I')
+    asfenicsx.evaluate_gradients()
     U_I_local, S_I_local = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for interpolation: {cost.number_of_calls()}")
     print(f"\tError I local (EV, EW): {np.linalg.norm(U-U_I_local)} , {np.linalg.norm(S-S_I_local)}")
@@ -323,6 +327,7 @@ if __name__ == '__main__':
 
     cost.interpolation(samples, interpolation_method = "LS", overwrite = True, clustering = True)
     cost.get_gradient_method('I')
+    asfenicsx.evaluate_gradients()
     U_LS_local, S_LS_local = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for local least squares interpolation: {cost.number_of_calls()}")
     print(f"\tError LS local (EV, EW): {np.linalg.norm(U-U_LS_local)} , {np.linalg.norm(S-S_LS_local)}")
@@ -385,7 +390,6 @@ if __name__ == '__main__':
     plt.legend(["Analytical", "FD", "Interpolation", "Least Squares", "Local Interpolation", "Local Least Squares"])
     plt.savefig("figures/2D_active_subspace_eigenvalues.pdf")
     plt.close("all")
-
 
     '''
     Noise Test
@@ -632,6 +636,7 @@ if __name__ == '__main__':
     U, S = asfenicsx.random_sampling_algorithm()
 
     cost.get_gradient_method('FD')
+    asfenicsx.evaluate_gradients()
     U_FD, S_FD = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for FD-2: {cost.number_of_calls()}")
     print(f"\tError FD (EV, EW): {np.linalg.norm(U-U_FD)} , {np.linalg.norm(S-S_FD)}")
@@ -639,6 +644,7 @@ if __name__ == '__main__':
 
     cost.interpolation(samples, overwrite = True)
     cost.get_gradient_method('I')
+    asfenicsx.evaluate_gradients()
     U_I, S_I = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for interpolation-2: {cost.number_of_calls()}")
     print(f"\tError I (EV, EW): {np.linalg.norm(U-U_I)} , {np.linalg.norm(S-S_I)}")
@@ -646,6 +652,7 @@ if __name__ == '__main__':
 
     cost.interpolation(samples, interpolation_method = "LS", overwrite = True)
     cost.get_gradient_method('I')
+    asfenicsx.evaluate_gradients()
     U_LS, S_LS = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for least squares interpolation-2: {cost.number_of_calls()}")
     print(f"\tError LS (EV, EW): {np.linalg.norm(U-U_LS)} , {np.linalg.norm(S-S_LS)}")
@@ -653,6 +660,7 @@ if __name__ == '__main__':
 
     cost.interpolation(samples, overwrite = True, clustering = True)
     cost.get_gradient_method('I')
+    asfenicsx.evaluate_gradients()
     U_I_local, S_I_local = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for interpolation-2: {cost.number_of_calls()}")
     print(f"\tError I local (EV, EW): {np.linalg.norm(U-U_I_local)} , {np.linalg.norm(S-S_I_local)}")
@@ -660,6 +668,7 @@ if __name__ == '__main__':
 
     cost.interpolation(samples, interpolation_method = "LS", overwrite = True, clustering = True)
     cost.get_gradient_method('I')
+    asfenicsx.evaluate_gradients()
     U_LS_local, S_LS_local = asfenicsx.random_sampling_algorithm()
     print(f"\tNumer of function evaluations for least squares interpolation-2: {cost.number_of_calls()}")
     print(f"\tError LS local (EV, EW): {np.linalg.norm(U-U_LS_local)} , {np.linalg.norm(S-S_LS_local)}")
@@ -721,3 +730,5 @@ if __name__ == '__main__':
     plt.plot(S_LS_local, 'm')
     plt.legend(["Analytical", "FD", "Interpolation", "Least Squares", "Local Interpolation", "Local Least Squares"])
     plt.savefig("figures/2D_active_subspace_eigenvalues.pdf")
+
+    plt.close('all')

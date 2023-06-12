@@ -135,14 +135,10 @@ class functional:
             raise ValueError("Invalid method")
         if method == 'A' and not hasattr(self, '_derivative'):
             raise ValueError("No derivative has been set. Please define the derivative before using the analytical method")
-        if self._debug:
-            try:
-                print(f"Gradient method set to {method}, was {self.gradient_method}")
-            except:
-                print(f"Gradient method set to {method}, was not set before")
+        debug_info(self._debug, f"Gradient method set to {method}")
         self.gradient_method=method
     
-    def interpolation(self, sampling : sampling, order = 2, interpolation_method = 'default', overwrite = False, clustering = False):
+    def interpolation(self, sampling : sampling, order = 2, interpolation_method = 'polynomial', overwrite = False, clustering = False):
         """Calculates a polynomial interpolant (globally or locally) based on given samples.
 
         This function calculates a polynomial based on the multivariate interpolation function
@@ -151,8 +147,8 @@ class functional:
         Args:
             sampling (sampling): sampling object containing the samples
             order (int, optional): Order of the polynomial interpolant. Defaults to 2.
-            interpolation_method (str, optional): Method used to calculate the interpolant. Defaults to 'default'.
-                                                    Possible values are 'default', 'LS' (least squares).
+            interpolation_method (str, optional): Method used to calculate the interpolant. Defaults to 'polynomial'.
+                                                    Possible values are 'polynomial', 'LS' (least squares).
             overwrite (bool, optional): If True, the interpolant will be overwritten if it has already been calculated. Defaults to False.
             clustering (bool, optional): If True, the samples will be clustered and multiple local interpolants will be calculated. Defaults to False.
 
@@ -164,9 +160,7 @@ class functional:
         assert sampling.m == self.m, "The dimension of the samples must match the dimension of the parameter space"
         self.use_clusters = clustering
 
-        if self._debug:
-            print(f"Interpolation method set to {interpolation_method}")
-            print(f"Order of the interpolant set to {order}")
+        debug_info(self._debug, f"Interpolation method set to {interpolation_method} \n\tOrder of the interpolant set to {order}")
 
         # Calculates the global interpolant
         if not clustering:
@@ -260,9 +254,7 @@ class functional:
         # If no values are given evaluate the function at the samples
         if values is None:
             assert(np.shape(samples)[0] >= number_of_samples), f"The number of samples must be greater or equal to the number of coefficients. Is {np.shape(samples)[0]} but should be {number_of_samples}"
-            if self._debug:
-
-                print(f"fCalculating {number_of_samples} values of the function, because none where given.")
+            debug_info(self._debug, f"Calculating {number_of_samples} values of the function, because none where given")
             values = np.zeros(number_of_samples)
             for i in range(number_of_samples):
                 values[i] = self.evaluate(samples[i,:])

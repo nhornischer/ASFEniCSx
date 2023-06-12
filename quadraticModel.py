@@ -11,7 +11,6 @@ dir = os.path.dirname(__file__)
 if not os.path.exists(os.path.join(dir,"quadraticModel")):
     os.makedirs(os.path.join(dir,"quadraticModel/quadraticModel"))
 
-
 m = 10          # Number of parameters
 alpha = 2       # Oversampling factor (originally 2)
 k = 6           # Number of eigenvalues of interest
@@ -142,6 +141,7 @@ plt.yscale('log')
 plt.xlabel("Sample Index")
 plt.ylabel("Error")
 plt.legend()
+plt.savefig("quadraticModel/constantDecay_gradient_errors")
 
 
 # Define the function and its gradient
@@ -207,6 +207,7 @@ plt.yscale('log')
 plt.xlabel("Sample Index")
 plt.ylabel("Error")
 plt.legend()
+plt.savefig("quadraticModel/gap_gradient_errors")
 
 # Define the function and its gradient
 function = lambda x: 0.5 * x.T @ A_gap2 @ x
@@ -271,92 +272,90 @@ plt.yscale('log')
 plt.xlabel("Sample Index")
 plt.ylabel("Error")
 plt.legend()
+plt.savefig("quadraticModel/gap2_gradient_errors")
 
 ######################################################################
 # Test the ASFEniCSx class with the quadratic model
 ######################################################################
 
 
+"""
+Constant Decay
+"""
 function = lambda x: 0.5 * x.T @ A @ x
 grad = lambda x: A @ x
-
 func = functional(m, function)
 func.get_derivative(grad)
 
 func.get_gradient_method('A')
-as_A = ASFEniCSx(k, func, samples)
-U_A, S_A = as_A.random_sampling_algorithm()
-[e_max_A, e_min_A],[sub_max_A, sub_min_A, sub_mean_A] = as_A.bootstrap(100)
-
-# Define true subspace error
+asfenicsx = ASFEniCSx(k, func, samples)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constantDecay_eigenvalues"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/constantDecay_subspace"), ylim=[1e-6,1])
 
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constant_decay"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_constant_decay"), ylim=[1e-6,1])
-
+# Finite Differences
 func.get_gradient_method('FD')
-as_A = ASFEniCSx(k, func, samples)
-as_A.evaluate_gradients(h=1e-1, order = 1)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-1, order = 1)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constant_decay_FD_1e-1_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_constant_decay_FD_1e-1_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constantDecay_eigenvalues_FD_1e-1_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/constantDecay_subspace_FD_1e-1_1"), ylim=[1e-6,1])
 
-as_A.evaluate_gradients(h=1e-3, order = 1)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-3, order = 1)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constant_decay_FD_1e-3_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_constant_decay_FD_1e-3_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constantDecay_eigenvalues_FD_1e-3_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/constantDecay_subspace_FD_1e-3_1"), ylim=[1e-6,1])
 
-as_A.evaluate_gradients(h=1e-5, order = 1)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-5, order = 1)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constant_decay_FD_1e-5_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_constant_decay_FD_1e-5_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constantDecay_eigenvalues_FD_1e-5_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/constantDecay_subspace_FD_1e-5_1"), ylim=[1e-6,1])
 
-as_A.evaluate_gradients(h=1e-1, order = 2)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-1, order = 2)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constant_decay_FD_1e-1_2"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_constant_decay_FD_1e-1_2"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constantDecay_eigenvalues_FD_1e-1_2"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/constantDecay_subspace_FD_1e-1_2"), ylim=[1e-6,1])
 
+# Interpolation
 func.get_gradient_method('I')
 func.interpolation(samples, interpolation_method = 'LS', order = 1)
-as_A = ASFEniCSx(k, func, samples)
-as_A.evaluate_gradients()
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients()
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constant_decay_I_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_constant_decay_I_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constantDecay_eigenvalues_I_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/constantDecay_subspace_I_1"), ylim=[1e-6,1])
 
-func.get_gradient_method('I')
 func.interpolation(samples, interpolation_method = 'LS', order = 2, overwrite=True)
-as_A = ASFEniCSx(k, func, samples)
-as_A.evaluate_gradients()
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients()
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constant_decay_I_2"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_constant_decay_I_2"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_constant**2, filename=os.path.join(dir,"quadraticModel/constantDecay_eigenvalues_I_2"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/constantDecay_subspace_I_2"), ylim=[1e-6,1])
 
 
 """
@@ -364,175 +363,159 @@ Eigenvalues with gap between first and second
 """
 function = lambda x: 0.5 * x.T @ A_gap @ x
 grad = lambda x: A_gap @ x
-
 func = functional(m, function)
 func.get_derivative(grad)
 
 func.get_gradient_method('A')
-as_A = ASFEniCSx(k, func, samples)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
-
-# Define true subspace error
+asfenicsx = ASFEniCSx(k, func, samples)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_eigenvalues"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap_subspace"), ylim=[1e-6,1])
 
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_decay"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap_decay"), ylim=[1e-6,1])
-
-function = lambda x: 0.5 * x.T @ A_gap @ x
-
-func = functional(m, function)
-
+# Finite Differences
 func.get_gradient_method('FD')
-as_A = ASFEniCSx(k, func, samples)
-as_A.evaluate_gradients(h=1e-1, order = 1)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-1, order = 1)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_FD_1e-1_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap_FD_1e-1_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_eigenvalues_FD_1e-1_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap_subspace_FD_1e-1_1"), ylim=[1e-6,1])
 
-as_A.evaluate_gradients(h=1e-3, order = 1)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-3, order = 1)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_FD_1e-3_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap_FD_1e-3_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_eigenvalues_FD_1e-3_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap_subspace_FD_1e-3_1"), ylim=[1e-6,1])
 
-as_A.evaluate_gradients(h=1e-5, order = 1)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-5, order = 1)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_FD_1e-5_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap_FD_1e-5_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_eigenvalues_FD_1e-5_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap_subspace_FD_1e-5_1"), ylim=[1e-6,1])
 
-as_A.evaluate_gradients(h=1e-1, order = 2)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-1, order = 2)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_FD_1e-1_2"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap_FD_1e-1_2"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_eigenvalues_FD_1e-1_2"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap_subspace_FD_1e-1_2"), ylim=[1e-6,1])
 
+# Interpolation
 func.get_gradient_method('I')
 func.interpolation(samples, interpolation_method='LS', order = 1, overwrite=True)
-as_I = ASFEniCSx(k, func, samples)
-U_I, S_I = as_I.random_sampling_algorithm()
-as_I.bootstrap(100)
+asfenicsx.evaluate_gradients()
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
-    sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_I[:,i+1:]), ord=2)
-as_I.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_I_1"), ylim=[1e-8,1e4])
-as_I.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap_I_1"), ylim=[1e-6,1])
+    sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_eigenvalues_I_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap_subspace_I_1"), ylim=[1e-6,1])
 
-func.get_gradient_method('I')
 func.interpolation(samples, interpolation_method='LS', order = 2, overwrite=True)
-as_I = ASFEniCSx(k, func, samples)
-U_I, S_I = as_I.random_sampling_algorithm()
-as_I.bootstrap(100)
+asfenicsx.evaluate_gradients()
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
-    sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_I[:,i+1:]), ord=2)
-as_I.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_I_2"), ylim=[1e-8,1e4])
-as_I.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap_I_2"), ylim=[1e-6,1])
+    sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap**2, filename=os.path.join(dir,"quadraticModel/gap_eigenvalues_I_2"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap_subspace_I_2"), ylim=[1e-6,1])
 
-"""Eigenvalues with gap between third and fourth"""
+"""
+Eigenvalues with gap between third and fourth
+"""
 
 function = lambda x: 0.5 * x.T @ A_gap2 @ x
 grad = lambda x: A_gap2 @ x
-
 func = functional(m, function)
 func.get_derivative(grad)
 
 func.get_gradient_method('A')
-as_A = ASFEniCSx(k, func, samples)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
-
-# Define true subspace error
+asfenicsx = ASFEniCSx(k, func, samples)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_eigenvalues"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap2_subspace"), ylim=[1e-6,1])
 
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_decay"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap2_decay"), ylim=[1e-6,1])
-
+# Finite Differences
 func.get_gradient_method('FD')
-as_A = ASFEniCSx(k, func, samples)
-as_A.evaluate_gradients(h=1e-1, order = 1)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx = ASFEniCSx(k, func, samples)
+asfenicsx.evaluate_gradients(h=1e-1, order = 1)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_FD_1e-1_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap2_FD_1e-1_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_eigenvalues_FD_1e-1_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap2_subspace_FD_1e-1_1"), ylim=[1e-6,1])
 
-as_A.evaluate_gradients(h=1e-3, order = 1)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-3, order = 1)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_FD_1e-3_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap2_FD_1e-3_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_eigenvalues_FD_1e-3_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap2_subspace_FD_1e-3_1"), ylim=[1e-6,1])
 
-as_A.evaluate_gradients(h=1e-5, order = 1)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-5, order = 1)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_FD_1e-5_1"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap2_FD_1e-5_1"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_eigenvalues_FD_1e-5_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap2_subspace_FD_1e-5_1"), ylim=[1e-6,1])
 
-as_A.evaluate_gradients(h=1e-1, order = 2)
-U_A, S_A = as_A.random_sampling_algorithm()
-as_A.bootstrap(100)
+asfenicsx.evaluate_gradients(h=1e-1, order = 2)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
     sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
-as_A.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_FD_1e-1_2"), ylim=[1e-8,1e4])
-as_A.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap2_FD_1e-1_2"), ylim=[1e-6,1])
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_eigenvalues_FD_1e-1_2"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap2_subspace_FD_1e-1_2"), ylim=[1e-6,1])
 
+# Interpolation
 func.get_gradient_method('I')
 func.interpolation(samples, order=1, interpolation_method="LS", overwrite=True)
-
-as_I = ASFEniCSx(k, func, samples)
-U_I, S_I = as_I.random_sampling_algorithm()
-as_I.bootstrap(100)
-
-# Define true subspace error
+asfenicsx.evaluate_gradients()
+asfenicsx = ASFEniCSx(k, func, samples)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
-    sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_I[:,i+1:]), ord=2)
+    sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_eigenvalues_LS_1"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap2_subspace_LS_1"), ylim=[1e-6,1])
 
-as_I.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_LS_1"), ylim=[1e-8,1e4])
-as_I.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap2_LS_1"), ylim=[1e-6,1])
-
-func.get_gradient_method('I')
 func.interpolation(samples, order=2, interpolation_method="LS", overwrite=True)
-
-as_I = ASFEniCSx(k, func, samples)
-U_I, S_I = as_I.random_sampling_algorithm()
-as_I.bootstrap(100)
-
-# Define true subspace error
+asfenicsx.evaluate_gradients()
+asfenicsx = ASFEniCSx(k, func, samples)
+U_A, S_A = asfenicsx.random_sampling_algorithm()
+asfenicsx.bootstrap(100)
 sub_error = np.zeros(m-1)
 for i in range(m-1):
-    sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_I[:,i+1:]), ord=2)
-
-as_I.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_LS_2"), ylim=[1e-8,1e4])
-as_I.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/subspace_gap2_LS_2"), ylim=[1e-6,1])
-
+    sub_error[i] = np.linalg.norm(np.dot(eigenvectors[:,:i+1].T, U_A[:,i+1:]), ord=2)
+asfenicsx.plot_eigenvalues(true_eigenvalues=eigenvalues_gap2**2, filename=os.path.join(dir,"quadraticModel/gap2_eigenvalues_LS_2"), ylim=[1e-8,1e4])
+asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"quadraticModel/gap2_subspace_LS_2"), ylim=[1e-6,1])
 
 plt.close('all')

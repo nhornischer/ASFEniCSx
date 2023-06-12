@@ -1,5 +1,6 @@
 import numpy as np
 
+from ASFEniCSx.utils import debug_info
 from ASFEniCSx.sampling import sampling
 from ASFEniCSx.functional import functional
 
@@ -63,7 +64,7 @@ class ASFEniCSx:
         self.k = k
         self.function = function
         self.samples = samples
-        self.debug = debug
+        self._debug = debug
 
     def evaluate_gradients(self, **kwargs):
         """Evaluates the gradients of the function at the samples
@@ -75,16 +76,10 @@ class ASFEniCSx:
         """
 
         # Check if additional arguments are given
+        debug_info(self._debug, "Evaluating gradients for active subspace construction")
         gradients = np.zeros([self.samples.M, self.samples.m])
-        if self.debug:
-            import tqdm.autonotebook
-            progress = tqdm.autonotebook.tqdm(desc="Evaluating Gradients", total=self.samples.M)
         for i in range(self.samples.M):
             gradients[i] = self.function.gradient(self.samples.extract(i), self.samples, **kwargs)
-            if self.debug:
-                progress.update(1)
-        if self.debug:
-            progress.close()
         self.gradients = gradients
         return gradients
 
@@ -111,7 +106,6 @@ class ASFEniCSx:
         Corresponds to Algorithm 3.1 in the book of Constantine et al.
 
         Args:
-            info (bool, optional): If True, a progress bar is shown. Defaults to False.
         
         Returns:
             np.ndarray: Matrix of eigenvectors stored in the columns
@@ -119,9 +113,12 @@ class ASFEniCSx:
         """
 
         # Evaluate the gradients of the function at the samples
+        debug_info(self._debug, "Constructing the active subspace using the random sampling algorithm")
         if not hasattr(self, 'gradients'):
             self.evaluate_gradients()
-        
+        else:
+            print("WARNING: Gradients already evaluated, skipping evaluation. Make sure the gradients are up to date.")
+
         # Construct the covariance matrix
         convariance_matrix = self.covariance(self.gradients)
 
