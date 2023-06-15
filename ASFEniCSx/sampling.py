@@ -3,7 +3,8 @@ import json
 
 from ASFEniCSx.utils import NumpyEncoder, denormalizer, normalizer, debug_info
 
-class sampling:
+# NOTE Class names must start with capital letter
+class Sampling:
     """Class for sampling the domain of a parameter space
 
     This class produces an object containing the samples of the domain as well
@@ -73,7 +74,8 @@ class sampling:
         self.m = m
         self.random_uniform()
         self._debug = debug
-
+    # TODO 1. Do not force [-1., 1.] interval, 2. Do not force uniform distribution
+    
     def random_uniform(self, overwrite = False):
         """Generates the samples using a uniform distribution
         
@@ -117,7 +119,8 @@ class sampling:
         Args:
             bounds (numpy.ndarray): Array containing the boundaries of the original unnormalized domain
         """
-        assert bounds.shape == (self.m,2), "Bounds have wrong shape"
+        assert bounds.shape == (2, self.m), "Bounds have wrong shape"
+        # NOTE Bounds shape changed from (m, 2) to (2, m)
         self._bounds = bounds
     
     def samples(self):
@@ -253,7 +256,8 @@ class sampling:
         else:
             raise AttributeError("Samples already exist. Use overwrite=True to overwrite them")
 
-class clustering(sampling):
+# NOTE Class names must start with capital letter
+class Clustering(Sampling):
     """Class for creating clustered samples of a parameter space as a subclass of sampling
 
     This class produces as sampling object that contains clustered samples of a parameter space in addition
@@ -316,10 +320,15 @@ class clustering(sampling):
         self._centroids = np.random.uniform(_min, _max, (self.k, self.m))
         _prev_centroids=None
         _iter=0
+        # TODO Reconsider whether np.not_equal correct choice?
         while np.not_equal(self._centroids, _prev_centroids).any() and _iter < self._max_iter:
             _prev_centroids = self._centroids.copy()
             _clusters = self._assign_clusters(self._array)
             self._update_centroids(_clusters)
+            print(f"Iteration: {_iter + 1}")
+            print(f"Maximum centroid update: {np.max(abs(_prev_centroids - self._centroids))}")
+            print(f"Are previous and current centroid not equal? {np.not_equal(self._centroids, _prev_centroids).any()}")
+            print(f"Are previous and current centroid equal? {np.equal(self._centroids, _prev_centroids).any()}")
             _iter += 1
         self._clusters = _clusters
     
@@ -497,4 +506,17 @@ class clustering(sampling):
 
 
 if __name__ == "__main__":
-    
+    samples = Sampling(100, 10)
+    kmeans = Clustering(100, 3, 7)
+    kmeans.detect()
+    '''
+    NOTE
+    1. Class anems must start with capital letter
+    TODO
+    1. Do not force [-1., 1.] interval
+    2. Do not force uniform distribution
+    3. Update utils function call with interval arguments
+    4. Update bounds shape change from (m, 2) to (2, m)
+    5. Benchmark case for correct clusters
+    6. Reconsider whether np.not_equal correct choice for cluster iterations? Is np.not_equal correct way to compare floats?
+    '''
