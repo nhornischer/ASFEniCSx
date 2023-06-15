@@ -495,3 +495,6 @@ class clustering(sampling):
             for i in range(len(clusters)):
                 self._clusters.append(np.asarray(clusters[i]))
 
+
+if __name__ == "__main__":
+    

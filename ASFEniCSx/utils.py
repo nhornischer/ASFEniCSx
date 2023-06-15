@@ -79,15 +79,16 @@ def debug_info(debug : bool, message : str):
         frameinfo = getframeinfo(currentframe().f_back)
         print(f"DEBUG: File \"{frameinfo.filename}\", line {frameinfo.lineno}, module {frameinfo.function} \n\t{message}")    
 
-def normalizer(sample : np.ndarray, bounds : np.ndarray):
+def normalizer(sample : np.ndarray, bounds : np.ndarray,
+               interval: np.ndarray = np.array([-1., 1.])):
     """Normalizes a sample
     
     Normalizes a sample to the interval [-1,1] using the bounds
     
     Args:
         sample (np.ndarray): The sample to be normalized. Has either shape (M, m) or (m,).
-        bounds (np.ndarray): The bounds used for normalization. Has shape (m,2).
-        
+        bounds (np.ndarray): The bounds used for normalization. Has shape (2, m). # NOTE bounds shape changed from (m, 2) to (2, m)
+        interval (np.ndarray): The interval for normalization, Default [-1., 1.] # NOTE
     Returns:
         np.ndarray: The normalized sample
     """
@@ -97,34 +98,40 @@ def normalizer(sample : np.ndarray, bounds : np.ndarray):
         sample = sample.reshape(1, -1)
     
     # Check if bounds are valid
-    if bounds.shape[0] != sample.shape[1]:
+    if bounds.shape[1] != sample.shape[1]:
         raise ValueError("Bounds do not match sample dimensions")
     
     # Check if bounds are valid
-    if np.any(bounds[:,0] > bounds[:,1]):
-        raise ValueError("Bounds are invalid")
+    if np.any(bounds[0, :] > bounds[1, :]):
+        raise ValueError("Lower bounds seem to be greater than Upper bounds")
     
+    '''
+    TODO Is this necessary?
     # Check if sample is valid
     if np.any(sample < bounds[:,0]) or np.any(sample > bounds[:,1]):
         raise ValueError("Sample is invalid")
+    '''
     
     # Normalize
-    sample = 2*(sample - bounds[:,0])/(bounds[:,1] - bounds[:,0]) - 1
+    sample = \
+        (interval[1] - interval[0]) * (sample - bounds[0, :]) / \
+        (bounds[1, :] - bounds[0, :]) + interval[0]
 
     # Make sample 1D if it is unnecessary 2D
     if sample.shape[0] == 1:
         sample = sample.reshape(-1)
     return sample
 
-def denormalizer(sample : np.ndarray, bounds : np.ndarray):
+def denormalizer(sample: np.ndarray, bounds: np.ndarray,
+                 interval=np.array([-1., 1.])):
     """Denormalizes a sample
     
-    DEnormalizes a sample from the interval [-1,1] using the bounds
+    Denormalizes a sample from the interval using the bounds
     
     Args:
         sample (np.ndarray): The sample to be unnormalized. Has either shape (M, m) or (m, ).
-        bounds (np.ndarray): The bounds used for unnormalization. Has shape (m,2).
-        
+        bounds (np.ndarray): The bounds used for unnormalization. Has shape (2, m). # NOTE bounds shape changed from (m, 2) to (2, m)
+        interval (np.ndarray): Scaling interval. Default [-1., 1.] # NOTE
     Returns:
         np.ndarray: The unnormalized sample
     """
@@ -134,22 +141,46 @@ def denormalizer(sample : np.ndarray, bounds : np.ndarray):
         sample = sample.reshape(1, -1)
 
     # Check if bounds are valid
-    if bounds.shape[0] != sample.shape[1]:
+    if bounds.shape[1] != sample.shape[1]:
         raise ValueError("Bounds do not match sample dimensions")
     
     # Check if bounds are valid
-    if np.any(bounds[:,0] > bounds[:,1]):
-        raise ValueError("Bounds are invalid")
+    if np.any(bounds[0, :] > bounds[1, :]):
+        raise ValueError("Lower bounds seem to be greater than Upper bounds")
     
+    '''
+    TODO Is this necessary?
     # Check if sample is valid
     if np.any(sample < -1) or np.any(sample > 1):
         raise ValueError("Sample is invalid")
+    '''
     
     # Unnormalize
-    sample = 0.5*(sample + 1)*(bounds[:,1] - bounds[:,0]) + bounds[:,0]
+    sample = (sample - interval[0]) * (bounds[1, :] - bounds[0, :]) / \
+        (interval[1] - interval[0]) + bounds[0, :]
 
     # Make sample 1D if it is unnecessary 2D
     if sample.shape[0] == 1:
         sample = sample.reshape(-1)
 
     return sample
+
+
+if __name__ == "__main__":
+    a_original = np.random.uniform(-1.3, 2., (10, 2))
+    bounds = np.vstack([np.array([-1.3, -1.3]), np.array([2., 2.])])
+    interval = np.array([-0.5, 0.5])
+    normalized_a = normalizer(a_original, bounds, interval)
+    denormalized_a = denormalizer(normalized_a, bounds, interval)
+    print(f"Original a: {a_original}")
+    print(f"Normalized a: {normalized_a}")
+    print(f"Denormalized a: {denormalized_a}")
+    print(f"Max error between original and denormalized sample: {np.max(np.abs(a_original - denormalized_a))}")
+    
+    '''
+    TODO
+    1. Is checking sample validity necessary?
+    NOTE
+    1. Bounds shape changed from (m, 2) to (2, m) for consistencny with sample shape
+    2. Interval range [-1., 1.] is default but not mandatory
+    '''
