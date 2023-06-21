@@ -2,8 +2,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ASFEniCSx.sampling import sampling
-from ASFEniCSx.functional import functional
+from ASFEniCSx.sampling import Sampling
+from ASFEniCSx.functional import Functional
 from ASFEniCSx.asfenicsx import ASFEniCSx
 from ASFEniCSx.utils import debug_info, normalizer, denormalizer
 
@@ -74,11 +74,11 @@ M = 1000    # Number of points to sample
 m = 10      # Dimensions of the parameter space
 
 # Sample the input space
-samples = sampling(M, m, 5)
+samples = Sampling(M, m, 5)
 samples.set_domainBounds(np.array([[150, 200], [220, 300], [6,10], [-10, 10], [16, 45], [.5, 1], [.08, .18], [2.5, 6], [1700, 2500], [.025, .08]]))
+samples.random_uniform()
 
-
-func = functional(m, wing)
+func = Functional(m, wing)
 func.get_derivative(wing_grad)
 
 asfenicsx = ASFEniCSx(m, func, samples)

@@ -24,8 +24,8 @@ from dolfinx.io import gmshio, XDMFFile
 from petsc4py.PETSc import ScalarType
 from scipy.sparse.linalg import eigsh
 
-from ASFEniCSx.sampling import sampling
-from ASFEniCSx.functional import functional
+from ASFEniCSx.sampling import Sampling
+from ASFEniCSx.functional import Functional
 from ASFEniCSx.asfenicsx import ASFEniCSx
 from ASFEniCSx.FEniCSxSim import FEniCSxSim
 
@@ -194,7 +194,8 @@ if __name__ == "__main__":
     # TODO: Check if the simulation is correct especially the correlation matrix
 
     # Set the parameter values
-    samples = sampling(M,m)
+    samples = Sampling(M,m)
+    samples.random_uniform()
     progress = tqdm.autonotebook.tqdm(desc="Solving Problem", total=M)
     for i in range(M):
         value = simulation.quantity_of_interest(samples.extract(i))
@@ -202,7 +203,7 @@ if __name__ == "__main__":
         progress.update(1)
     progress.close()
 
-    cost = functional(m, simulation.quantity_of_interest)
+    cost = Functional(m, simulation.quantity_of_interest)
     cost.get_gradient_method('FD')
 
     active_subspace = ASFEniCSx(20, cost, samples)

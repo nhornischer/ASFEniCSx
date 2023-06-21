@@ -1,9 +1,9 @@
 import numpy as np
 
 from ASFEniCSx.utils import debug_info
-from ASFEniCSx.sampling import sampling
+from ASFEniCSx.sampling import Sampling
 
-class functional:
+class Functional:
     """ Class for constructing a functional, in order to evaluate a function, its derivative and interpolated values.
 
     Attributes:
@@ -53,9 +53,7 @@ class functional:
         array([1.9999, 3.9999])
 
     Notes:
-        The function must be defined in the original parameter domain.
-        The transformation between the normalized input and the original parameter domain is done in the sampling class
-        and at the relevant places in the ASFEniCSx class.
+        The function must be defined in the original parameter domain not in a normalized one.
 
     Version:
         0.1
@@ -144,7 +142,7 @@ class functional:
         debug_info(self._debug, f"Gradient method set to {method}")
         self.gradient_method=method
     
-    def interpolation(self, sampling : sampling, order = 2, interpolation_method = 'polynomial', overwrite = False, clustering = False):
+    def interpolation(self, sampling : Sampling, order = 2, interpolation_method = 'polynomial', overwrite = False, clustering = False):
         """Calculates a polynomial interpolant (globally or locally) based on given samples.
 
         This function calculates a polynomial based on the multivariate interpolation function

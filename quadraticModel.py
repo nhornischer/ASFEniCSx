@@ -1,8 +1,8 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from ASFEniCSx.sampling import sampling
-from ASFEniCSx.functional import functional
+from ASFEniCSx.sampling import Sampling
+from ASFEniCSx.functional import Functional
 from ASFEniCSx.asfenicsx import ASFEniCSx
 
 dir = os.path.dirname(__file__)
@@ -17,7 +17,8 @@ k = 6           # Number of eigenvalues of interest
 
 M = int(alpha * k * np.log(m)) 
 
-samples = sampling(M, m)
+samples = Sampling(M, m)
+samples.random_uniform()
 
 # Construct eigenvectors by generating an orthogonal basis from a random matrix and normalize them
 eigenvectors, _ = np.linalg.qr(np.random.rand(m,m))
@@ -63,7 +64,7 @@ function = lambda x: 0.5 * x.T @ A @ x
 grad = lambda x: A @ x
 
 # Compute the true gradients
-func = functional(m, function)
+func = Functional(m, function)
 func.get_derivative(grad)
 func.get_gradient_method('A')
 
@@ -105,7 +106,7 @@ function = lambda x: 0.5 * x.T @ A @ x
 grad = lambda x: A @ x
 
 # Compute the true gradients
-func = functional(m, function)
+func = Functional(m, function)
 func.get_derivative(grad)
 func.get_gradient_method('A')
 
@@ -171,7 +172,7 @@ function = lambda x: 0.5 * x.T @ A_gap @ x
 grad = lambda x: A_gap @ x
 
 # Compute the true gradients
-func = functional(m, function)
+func = Functional(m, function)
 func.get_derivative(grad)
 func.get_gradient_method('A')
 
@@ -236,7 +237,7 @@ function = lambda x: 0.5 * x.T @ A_gap2 @ x
 grad = lambda x: A_gap2 @ x
 
 # Compute the true gradients
-func = functional(m, function)
+func = Functional(m, function)
 func.get_derivative(grad)
 func.get_gradient_method('A')
 
@@ -306,7 +307,7 @@ Constant Decay
 """
 function = lambda x: 0.5 * x.T @ A @ x
 grad = lambda x: A @ x
-func = functional(m, function)
+func = Functional(m, function)
 func.get_derivative(grad)
 
 func.get_gradient_method('A')
@@ -385,7 +386,7 @@ Eigenvalues with gap between first and second
 """
 function = lambda x: 0.5 * x.T @ A_gap @ x
 grad = lambda x: A_gap @ x
-func = functional(m, function)
+func = Functional(m, function)
 func.get_derivative(grad)
 
 func.get_gradient_method('A')
@@ -464,7 +465,7 @@ Eigenvalues with gap between third and fourth
 
 function = lambda x: 0.5 * x.T @ A_gap2 @ x
 grad = lambda x: A_gap2 @ x
-func = functional(m, function)
+func = Functional(m, function)
 func.get_derivative(grad)
 
 func.get_gradient_method('A')

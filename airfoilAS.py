@@ -2,8 +2,8 @@ import os
 import gmsh
 
 import ASFEniCSx.utils as utils
-from ASFEniCSx.sampling import sampling, clustering
-from ASFEniCSx.functional import functional
+from ASFEniCSx.sampling import Sampling, Clustering
+from ASFEniCSx.functional import Functional
 from ASFEniCSx.asfenicsx import ASFEniCSx
 from ASFEniCSx.FEniCSxSim import FEniCSxSim
 
@@ -402,7 +402,8 @@ if __name__ == "__main__":
         samples = utils.load(file)
         M = samples.M
     else:
-        samples = clustering(M, m, k)
+        samples = Clustering(M, m, k)
+        samples.random_uniform()
         samples.detect()
         samples.save(file)
     simulation = stationaryNavierStokes()
@@ -426,7 +427,7 @@ if __name__ == "__main__":
     simulation.save_solution(os.path.join(dir,"airfoilNavierStokes/solution.xdmf"), overwrite=True)
     
     # Define the functional
-    cost = functional(m, simulation.quantity_of_interest)
+    cost = Functional(m, simulation.quantity_of_interest)
 
     cost.interpolation(samples, order= 1, interpolation_method = "LS", clustering = True)
     cost.get_gradient_method("I")

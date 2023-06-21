@@ -2,8 +2,8 @@ import numpy as np
 import math
 import os
 
-from ASFEniCSx.sampling import clustering
-from ASFEniCSx.functional import functional
+from ASFEniCSx.sampling import Clustering
+from ASFEniCSx.functional import Functional
 from ASFEniCSx.asfenicsx import ASFEniCSx
 
 import matplotlib.pyplot as plt
@@ -51,7 +51,8 @@ if __name__ == '__main__':
     plt.clf()
 
     # Define clustered samples
-    samples = clustering(100, 2, 5)
+    samples = Clustering(100, 2, 5)
+    samples.random_uniform()
     samples.detect()
     samples.plot(os.path.join(dir,"figures/2D_samples.pdf"))
     samples.save(os.path.join(dir,"bivariate_samples.json"))
@@ -72,7 +73,7 @@ if __name__ == '__main__':
     samples.assign_values(evaluate_f)
 
     # Define the cost function
-    cost = functional(2, evaluate_f)
+    cost = Functional(2, evaluate_f)
     cost.get_derivative(calculate_df_dx)
 
     """ 
@@ -421,7 +422,7 @@ if __name__ == '__main__':
     samples.assign_values(noisy_evaluate_f, overwrite = True)
 
     # Define the cost function
-    cost = functional(2, noisy_evaluate_f)
+    cost = Functional(2, noisy_evaluate_f)
 
     """ 
     Perform a validation test of the differentiation methods

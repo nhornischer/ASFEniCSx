@@ -3,19 +3,16 @@ import json
 
 from ASFEniCSx.utils import NumpyEncoder, denormalizer, normalizer, debug_info
 
-# NOTE Class names must start with capital letter
 class Sampling:
     """Class for sampling the domain of a parameter space
 
     This class produces an object containing the samples of the domain as well
     as the number of samples and the dimension of the parameter space.
 
-    Per default the domain is sampled using a uniform distribution with values
-    between -1 and 1.
-
     Important remarks: No mather what probability density function is used to 
     generate the samples, the samples must always be normalized to the interval
-    [-1,1] in order to be used in the active subspace method.
+    [-1,1] in order to be used in the active subspace method. This needs to be
+    done by the user, since the samples are stored unnormalized.
 
     The samples are stored in a numpy array of shape (M,m) where M is the number
     of samples and m is the dimension of the parameter space.
@@ -28,7 +25,10 @@ class Sampling:
         M (int): Number of samples
         m (int): Dimension of the parameter space
     private:
-        _array (numpy.ndarray): Array containing the samples
+        _array (numpy.ndarray): Array containing the samples with shape (M,m)
+        _bounds (numpy.ndarray): Array containing the bounds of the original domain with shape (m,2)
+        _debug (bool): Debug flag
+        _object_type (str): Type of the object (sampling or clustering) used for saving and loading.
     
     Methods:
     public:
@@ -46,17 +46,18 @@ class Sampling:
 
     Example:
         >>> samples = sampling(100, 10)
+        >>> samples.random_uniform()
 
     Version:
         0.1
     Contributors:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
-    def __init__(self, M : int, m : int, debug=True) -> None:
+    def __init__(self, M : int, m : int, debug : bool = True) -> None:
         """Constructor for the sampling object
 
         Sets the sampling attributes M and m to the values passed to the
-        constructor and calls the random_uniform method to generate the samples.
+        constructor.
 
         Args:
             M (int): Number of samples
@@ -69,17 +70,15 @@ class Sampling:
         assert M > 0, "Number of samples must be greater than 0"
         assert m > 0, "Dimension of parameter space must be greater than 0"
 
-        self.object_type = "sampling"
+        self._object_type = "sampling"
         self.M = M
         self.m = m
-        self.random_uniform()
         self._debug = debug
-    # TODO 1. Do not force [-1., 1.] interval, 2. Do not force uniform distribution
     
     def random_uniform(self, overwrite = False):
         """Generates the samples using a uniform distribution
         
-        Generates the samples using a uniform distribution with values between -1 and 1.
+        Generates the samples using a uniform distribution with values from the defined domain boundaries.
         
         Args:
             overwrite (bool, optional): If True, overwrites the existing samples. Default is False.
@@ -88,13 +87,18 @@ class Sampling:
             AttributeError: If the samples already exist and overwrite is False
             
         """
-        if not hasattr(self, "_array") or overwrite:
-            self._array = np.random.uniform(-1, 1, (self.M,self.m))
-        else:
-            raise AttributeError("Samples already exist. Use overwrite=True to overwrite them")
-    
+        if not hasattr(self, "_bounds"):
+            self._bounds = np.array([[-1.0]*self.m, [1.0]*self.m]).T
+            debug_info(self._debug, "WARNING: NO BOUNDS DEFINED. USING DEFAULT BOUNDS [-1,1] FOR ALL PARAMETERS")
+        if not hasattr(self, "_array"):
+            self._array = np.zeros((self.M, self.m))
+        elif not overwrite:
+            raise AttributeError("Samples already exist. Use overwrite = True to overwrite them")
+        for i in range(self.m):
+            self._array[:,i] = np.random.uniform(self._bounds[i,0], self._bounds[i,1], self.M)
+
     def extract(self, index : int):
-        """Extracts a single sample from the array and denormalizes it.
+        """Extracts the sample at the given index.
         
         Args:   
             index (int): Index of the sample to be extracted
@@ -107,11 +111,7 @@ class Sampling:
         """
         assert 0<= index < self.M, "Index out of bounds"
 
-        if hasattr(self, "_bounds"):
-            sample = denormalizer(self._array[index,:], self._bounds)
-            return sample
-        else:
-            return self._array[index,:]
+        return self._array[index,:]
         
     def set_domainBounds(self, bounds : np.ndarray):
         """Sets the boundaries of the original domain
@@ -119,18 +119,10 @@ class Sampling:
         Args:
             bounds (numpy.ndarray): Array containing the boundaries of the original unnormalized domain
         """
-        assert bounds.shape == (2, self.m), "Bounds have wrong shape"
-        # NOTE Bounds shape changed from (m, 2) to (2, m)
+        assert bounds.shape == (self.m, 2), "Bounds have wrong shape. Expected ({},2), got {}".format(self.m, bounds.shape)
+        if hasattr(self, "_array"):
+            raise(AttributeError("Samples already exist. Bounds can not be changed"))
         self._bounds = bounds
-    
-    def samples(self):
-        """Returns the normalized sampling array
-        
-        Returns:
-            numpy.ndarray: The sampling array
-        """
-        debug_info(self._debug, "WARNING: THE NORMALIZED SAMPLING ARRAY IS RETURNED. USE THE EXTRACT METHOD TO GET A DENORMALIZED SAMPLE")
-        return self._array
 
     def assign_values(self, f : callable, overwrite = False):
         """Assigns values to the sampling object
@@ -196,7 +188,7 @@ class Sampling:
         return self._values
     
     def index(self, sample : np.ndarray):
-        """ Returns the index of the given normalized sample in the sampling array
+        """ Returns the index of the given sample in the sampling array
         
         Args:
             sample (numpy.ndarray): The sample
@@ -211,6 +203,14 @@ class Sampling:
         assert sample.shape == (self.m,), "Sample has wrong shape"
         assert sample in self._array, "Sample is not in the sampling array"
         return np.where(self._array == sample)[0][0]
+    
+    def normalized_samples(self, interval : np.ndarray = np.asarray([-1.0, 1.0])):
+        """Returns the normalized samples
+        
+        Returns:
+            numpy.ndarray: The normalized samples
+        """
+        return normalizer(self._array,self._bounds, interval)
     
     def save(self, filename : str):
         """Saves the sampling object to a json file
@@ -240,7 +240,6 @@ class Sampling:
         Raises:
             AssertionError: If the array has the wrong shape
 
-
         """
         array = np.asarray(data["_array"])
         assert array.shape == (self.M, self.m), "Array has wrong shape"
@@ -256,7 +255,6 @@ class Sampling:
         else:
             raise AttributeError("Samples already exist. Use overwrite=True to overwrite them")
 
-# NOTE Class names must start with capital letter
 class Clustering(Sampling):
     """Class for creating clustered samples of a parameter space as a subclass of sampling
 
@@ -318,17 +316,13 @@ class Clustering(Sampling):
         """
         _min, _max = np.min(self._array), np.max(self._array)
         self._centroids = np.random.uniform(_min, _max, (self.k, self.m))
-        _prev_centroids=None
+        _prev_centroids = np.zeros((self.k, self.m))
         _iter=0
-        # TODO Reconsider whether np.not_equal correct choice?
-        while np.not_equal(self._centroids, _prev_centroids).any() and _iter < self._max_iter:
+        while not np.isclose(self._centroids, _prev_centroids).all() and _iter < self._max_iter:
             _prev_centroids = self._centroids.copy()
             _clusters = self._assign_clusters(self._array)
             self._update_centroids(_clusters)
-            print(f"Iteration: {_iter + 1}")
-            print(f"Maximum centroid update: {np.max(abs(_prev_centroids - self._centroids))}")
-            print(f"Are previous and current centroid not equal? {np.not_equal(self._centroids, _prev_centroids).any()}")
-            print(f"Are previous and current centroid equal? {np.equal(self._centroids, _prev_centroids).any()}")
+            debug_info(self._debug, f"Iteration: {_iter + 1}, Maximum centroid update: {np.max(abs(_prev_centroids - self._centroids))}, Are previous and current centroid not equal? {np.not_equal(self._centroids, _prev_centroids).any()}, Are previous and current centroid equal? {np.equal(self._centroids, _prev_centroids).all()}")
             _iter += 1
         self._clusters = _clusters
     
@@ -401,9 +395,6 @@ class Clustering(Sampling):
         assert hasattr(self, "_centroids"), "Centroids have not been initialized"
         assert np.shape(x)[0] == self.m, "Dimension of data does not match dimension of parameter space"
         
-        # Normalize sample
-        if hasattr(self, "_bounds"):
-            x = normalizer(x, self._bounds)
         distances = np.linalg.norm(self._centroids-x, axis=1)
         idx = np.argmin(distances)
         # Check if index is valid
@@ -504,19 +495,3 @@ class Clustering(Sampling):
             for i in range(len(clusters)):
                 self._clusters.append(np.asarray(clusters[i]))
 
-
-if __name__ == "__main__":
-    samples = Sampling(100, 10)
-    kmeans = Clustering(100, 3, 7)
-    kmeans.detect()
-    '''
-    NOTE
-    1. Class anems must start with capital letter
-    TODO
-    1. Do not force [-1., 1.] interval
-    2. Do not force uniform distribution
-    3. Update utils function call with interval arguments
-    4. Update bounds shape change from (m, 2) to (2, m)
-    5. Benchmark case for correct clusters
-    6. Reconsider whether np.not_equal correct choice for cluster iterations? Is np.not_equal correct way to compare floats?
-    '''

@@ -1,8 +1,8 @@
 import numpy as np
 
 from ASFEniCSx.utils import debug_info
-from ASFEniCSx.sampling import sampling
-from ASFEniCSx.functional import functional
+from ASFEniCSx.sampling import Sampling
+from ASFEniCSx.functional import Functional
 
 class ASFEniCSx:
     """Class for constructing the active subspace in FeniCSx based on Constantine et al. 
@@ -17,8 +17,8 @@ class ASFEniCSx:
     Attributes:
     public:
         k (int): Number of eigenvalues of interest
-        function (functional): functional describing the quantity of interest
-        samples (sampling): sampling object containing the samples
+        function (Functional): Functional describing the quantity of interest
+        samples (Sampling): Sampling object containing the samples
         eigenvalues (numpy.ndarray): Eigenvalues of the covariance matrix (if created)
         eigenvectors (numpy.ndarray): Eigenvectors of the covariance matrix (if created)
 
@@ -33,11 +33,11 @@ class ASFEniCSx:
         plot_eigenvalues() : Plots the eigenvalues of the covariance matrix
         plot_subspace() : Plots distance of the active subspace using bootstrap
     Example:
-        >>> from ASFEniCSx import ASFEniCSx, sampling, functional
+        >>> from ASFEniCSx import ASFEniCSx, Sampling, Functional
         >>> def f(x): return x[0]**2 + x[1]**2
         >>> def dfdx(x): return [2*x[0], 2*x[1]]
-        >>> samples = sampling(100, 2)
-        >>> function = functional(2, f)
+        >>> samples = Sampling(100, 2)
+        >>> function = Functional(2, f)
         >>> function.get_derivative(dfdx)                           # Optional but sets the derivative of the function to the analytical solution
         >>> asfenicsx = ASFEniCSx(1, function, samples)
         >>> U, S = asfenicsx.random_sampling_algorithm()
@@ -48,7 +48,7 @@ class ASFEniCSx:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
 
-    def __init__(self, k : int, function : functional, samples : sampling, debug = True):
+    def __init__(self, k : int, function : Functional, samples : Sampling, debug = True):
         """Constructor for the ASFEniCSx class
 
         Args:
@@ -306,7 +306,7 @@ class ASFEniCSx:
         if not hasattr(self, "W1"):
             raise("The active subspace is not defined. If the eigenpairs of the covariance matrix are already calculated, call partition() first.")
         
-        active_variable_values = self.samples.samples().dot(self.W1)
+        active_variable_values = self.samples.normalized_samples().dot(self.W1)
         if hasattr(self.samples, "_values"):
             values = self.samples.values()
         else:
