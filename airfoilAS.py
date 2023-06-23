@@ -433,7 +433,7 @@ if __name__ == "__main__":
     cost.get_gradient_method("I")
 
     asfenicsx = ASFEniCSx(2, cost, samples)
-    U, S = asfenicsx.random_sampling_algorithm()
+    U, S = asfenicsx.estimation()
     asfenicsx.plot_eigenvalues()
     print(U, S)
 

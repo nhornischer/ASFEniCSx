@@ -26,7 +26,7 @@ class ASFEniCSx:
     public:
         evaluate_gradients(info : bool, optional) : Evaluates the gradients of the function at the samples
         covariance(info : bool, optional): Approximates the covariance matrix of the gradient of the function
-        random_sampling_algorithm() : Performs the random sampling algorithm to construct the active subspace
+        estimation() : Performs the random sampling algorithm to construct the active subspace
         partition(n : int) : Partitions the active subspace into the active and inactive subspace
         bootstrap(n : int, info : bool, optional) : Performs the bootstrap algorithm to estimate the error
         calculate_eigenpairs(matrix : np.ndarray) : Calculates the eigenpairs of the given matrix
@@ -40,7 +40,7 @@ class ASFEniCSx:
         >>> function = Functional(2, f)
         >>> function.get_derivative(dfdx)                           # Optional but sets the derivative of the function to the analytical solution
         >>> asfenicsx = ASFEniCSx(1, function, samples)
-        >>> U, S = asfenicsx.random_sampling_algorithm()
+        >>> U, S = asfenicsx.estimation()
 
     Version:
         0.1
@@ -118,7 +118,7 @@ class ASFEniCSx:
 
         return covariance
     
-    def random_sampling_algorithm(self):
+    def estimation(self):
         """Calculates the active subspace using the random sampling algorithm of Constantine et al.
         Corresponds to Algorithm 3.1 in the book of Constantine et al.
 
@@ -187,7 +187,7 @@ class ASFEniCSx:
             self.evaluate_gradients()
 
         if not hasattr(self, 'eigenvalues'):
-            self.random_sampling_algorithm()
+            self.estimation()
 
         # Loop over the number of bootstrap samples
         eigenvalues = np.zeros([self.samples.m, M_boot])

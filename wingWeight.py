@@ -82,7 +82,7 @@ func = Functional(m, wing)
 func.get_derivative(wing_grad)
 
 asfenicsx = ASFEniCSx(m, func, samples)
-asfenicsx.random_sampling_algorithm()
+asfenicsx.estimation()
 asfenicsx.bootstrap(100)
 
 asfenicsx.plot_eigenvalues(os.path.join(dir,"wingWeight","analytical_eigenvalues.png"))
@@ -97,7 +97,7 @@ func.interpolation(samples, order = 1, interpolation_method = "LS")
 func.get_gradient_method("I")
 
 asfenicsx.evaluate_gradients()
-asfenicsx.random_sampling_algorithm()
+asfenicsx.estimation()
 asfenicsx.bootstrap(100)
 asfenicsx.plot_eigenvalues(os.path.join(dir,"wingWeight","globalLinear_eigenvalues.png"))
 asfenicsx.plot_subspace(os.path.join(dir,"wingWeight","globalLinear_subspace.png"))

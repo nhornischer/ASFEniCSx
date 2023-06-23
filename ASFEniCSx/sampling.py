@@ -314,8 +314,13 @@ class Clustering(Sampling):
         """
         Detects the clusters using the k-means algorithm
         """
-        _min, _max = np.min(self._array), np.max(self._array)
-        self._centroids = np.random.uniform(_min, _max, (self.k, self.m))
+        # Initialize centroids as random for each parameter
+        centroids = np.zeros((self.k, self.m))
+        for i in range(self.m):
+            centroids[:,i] = np.random.uniform(self._bounds[i,0], self._bounds[i,1], self.k)
+        self._centroids = centroids
+
+        #TODO: Make centroids depending on each parameter
         _prev_centroids = np.zeros((self.k, self.m))
         _iter=0
         while not np.isclose(self._centroids, _prev_centroids).all() and _iter < self._max_iter:
@@ -380,13 +385,13 @@ class Clustering(Sampling):
         return cluster_idx
     
     def obtain_index(self, x : np.ndarray):
-        """Returns the index of the sample in the array
+        """Returns the cluster index of the sample
 
         Args:
             x (numpy.ndarray): Sample to be assigned to a cluster
 
         Returns:
-            int: Index of the sample in the array
+            int: Cluster index of the sample
 
         Raises:
             AssertionError: If the centroids have not been initialized
@@ -417,7 +422,7 @@ class Clustering(Sampling):
         """
         for i, centroid in enumerate(self._centroids):
             cluster_data = np.asarray([self.extract(idx) for idx in _clusters[i]])
-            _new_centroid = np.mean(cluster_data, axis=0)
+            _new_centroid = denormalizer(np.mean(normalizer(cluster_data, self._bounds), axis=0), self._bounds)
             if not np.isnan(centroid).any():
                 self._centroids[i] = _new_centroid
     

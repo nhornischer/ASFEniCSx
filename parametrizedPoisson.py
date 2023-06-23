@@ -208,6 +208,6 @@ if __name__ == "__main__":
 
     active_subspace = ASFEniCSx(20, cost, samples)
 
-    U, S = active_subspace.random_sampling_algorithm()
+    U, S = active_subspace.estimation()
     active_subspace.plot_eigenvalues(os.path.join(dir,"parametrizedPoisson/eigenvalues.png"))
 
