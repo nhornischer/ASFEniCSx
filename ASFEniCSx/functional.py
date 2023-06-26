@@ -1,37 +1,26 @@
 import numpy as np
+# TODO tabulate_dof_coordinate instead mesh.geometry.x
 
 from ASFEniCSx.utils import debug_info
 from ASFEniCSx.sampling import Sampling
 
 class Functional:
-    """ Class for constructing a functional, in order to evaluate a function, its derivative and interpolated values.
+    """ Class for constructing a functional, in order to evaluate a function.
 
     Attributes:
     public:
         m (int): Dimension of the parameter space
         f (function): Function to be evaluated
-        use_clusters (boolean): If True, the interpolant will be evaluated using the clusters of the clustering object (if created)
     private:
         _number_of_calls (int): Number of calls to the function
-        _derivative (callable): Analytical derivative of the function (if created)
-        _interpolant (callable): Interpolant of the function (if created)
-        _interpolants (list): List of callable interpolants of the function (if created)
-        _derivatives (list): List of callable derivatives of the function (if created)
+        _debug (bool): If True, debug information will be printed
 
     Methods:
     public:
         number_of_calls() -> int: Returns the number of calls to the function
         reset_number_of_calls(): Resets the number of calls to the function
         evaluate(x : numpy.ndarrray) -> float: Evaluates the function at the point x
-        get_derivative(dfdx : callable): Set the analytical derivative of the function
-        get_gradient_method(method : str): Sets the method for calculating the gradient
-        interpolation(samling : sampling): Calculates the interpolant and its derivative of the given function
-        multivariate_interpolation(samples : numpy.ndarray, values : numpy.ndarray) -> numpy.ndarray, numpy.ndarray: Calculates the coefficients and exponents of the interpolant
-        multivariate_polynomial(coefficients : numpy.ndarray, exponents : numpy.ndarray) -> callable: Returns a callable function of the interpolant
-        multivariate_polynomial_derivative(coefficients : numpy.ndarray, exponents : numpy.ndarray) -> callable: Returns a callable function of the derivative of the interpolant
-        evaluate_interpolant(x : numpy.ndarray) -> float: Evaluates the interpolant at the point x
         gradient(x : numpy.ndarray) -> numpy.ndarray: Calculates the gradient of the function at the point x
-
     private:
         _finite_differences(x : numpy.ndarray, h : float) -> numpy.ndarray: Calculates the finite difference of the function at the point x
 
@@ -41,26 +30,16 @@ class Functional:
         >>> x = np.array([1,2])
         >>> func.evaluate(x)
         5
-        >>> func.get_derivative(lambda x: [2*x[0], 2*x[1]])
-        >>> func.get_gradient_method("A")
-        >>> func.gradient(x)
-        array([2, 4])
-        >>> func.interpolation(sampling(10, 2), interpolation_method="LS")
-        >>> func.get_gradient_method("I")
-        >>> func.evaluate_interpolant(x)
-        4.9999
-        >>> func.gradient(x)
-        array([1.9999, 3.9999])
 
     Notes:
         The function must be defined in the original parameter domain not in a normalized one.
 
     Version:
-        0.1
+        0.2
     Contributors:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
-    def __init__(self, m : int, f : callable, debug = True):
+    def __init__(self, m : int, f : callable, debug = True) -> None:
         """Constructor of the functional class
         
         Args:
@@ -80,7 +59,7 @@ class Functional:
         self._debug = debug
         debug_info(self._debug, f"New functional object created with pointer {self}")
             
-    def number_of_calls(self):
+    def number_of_calls(self) -> int:
         """Returns the number of calls to the function
         
         Returns:
@@ -88,11 +67,11 @@ class Functional:
         """
         return self._number_of_calls
     
-    def reset_number_of_calls(self):
+    def reset_number_of_calls(self) -> None:
         """Resets the number of calls to the function"""
         self._number_of_calls = 0
 
-    def evaluate(self, x : np.ndarray):
+    def evaluate(self, x : np.ndarray) -> float:
         """ Evaluates the function at a given point
 
         Args:
@@ -108,272 +87,38 @@ class Functional:
         self._number_of_calls += 1
         return self.f(x)
 
-    def get_derivative(self, dfdx : callable):
-        """Sets the explicitly formulated derivative of the function
-
-        This method can be used to set the derivative of the functional object to 
-        a explicitly formulated function. This can either be a analytical form or
-        an interpolated function.
-
-        Raises:
-            AssertionError: If the derivative is not callable
-        """
-        assert callable(dfdx), "dfdx must be a callable function"
-        if self._debug:
-            print(f"Derivative set to {dfdx}")
-        self._derivative=dfdx
-        self.get_gradient_method('A')
-
-    def get_gradient_method(self, method : str):
-        """Sets the method used to calculate the gradient of the function
+    def gradient(self, x : np.ndarray, **kwargs) -> np.ndarray:
+        """Calculates the gradient of the function at the given point/points using finite differences.
 
         Args:
-            method (str): Method used to calculate the gradient. Possible values are
-                            'FD' (finite differences), 'I' (interpolation) and 'A' (analytical)
-
-        Raises:
-            ValueError: If the method is not valid
-            ValueError: If the analytical method is used but no derivative has been set
-        """
-        if not method in [None, 'FD', 'I', 'A']:
-            raise ValueError("Invalid method")
-        if method == 'A' and not hasattr(self, '_derivative'):
-            raise ValueError("No derivative has been set. Please define the derivative before using the analytical method")
-        debug_info(self._debug, f"Gradient method set to {method}")
-        self.gradient_method=method
-    
-    def interpolation(self, sampling : Sampling, order = 2, interpolation_method = 'polynomial', overwrite = False, clustering = False):
-        """Calculates a polynomial interpolant (globally or locally) based on given samples.
-
-        This function calculates a polynomial based on the multivariate interpolation function
-        and sets the interpolant and its derivative as attributes of the functional object.
-
-        Args:
-            sampling (sampling): sampling object containing the samples
-            order (int, optional): Order of the polynomial interpolant. Defaults to 2.
-            interpolation_method (str, optional): Method used to calculate the interpolant. Defaults to 'polynomial'.
-                                                    Possible values are 'polynomial', 'LS' (least squares).
-            overwrite (bool, optional): If True, the interpolant will be overwritten if it has already been calculated. Defaults to False.
-            clustering (bool, optional): If True, the samples will be clustered and multiple local interpolants will be calculated. Defaults to False.
-
-        Raises:
-            AssertionError: If the dimension of the samples does not match the dimension of the parameter space
-            ValueError: If the samples object does not contain any clusters
-            ValueError: If the interpolant has already been calculated but overwrite is set to False
-        """
-        assert sampling.m == self.m, "The dimension of the samples must match the dimension of the parameter space"
-        self.use_clusters = clustering
-
-        debug_info(self._debug, f"Interpolation method set to {interpolation_method} \n\tOrder of the interpolant set to {order}")
-
-        # Calculates the global interpolant
-        if not clustering:
-            _data = np.asarray([sampling.extract(i) for i in range(sampling.M)])
-            if hasattr(sampling, "_values"):
-                _values = sampling.values()
-            else:
-                _values = None
-            coefficients, exponents = self.multivariate_interpolation(_data, _values, order = order, method = interpolation_method)
-            if hasattr(self, "_interpolant") and not overwrite:
-                raise ValueError("The interpolant has already been calculated. Please set overwrite to True to overwrite the interpolant")
-            self._interpolant = self.multivariate_polynomial(coefficients, exponents)
-            self._derivative = self.multivariate_polynomial_derivative(coefficients, exponents)
-        # Calculates multiple local interpolates based on the defined clusters
-        else: 
-            if not hasattr(sampling, "_clusters"):
-                raise ValueError("The samples object does not contain any clusters. Please set clustering to False")
-            if hasattr(self, "_interpolants") and not overwrite:
-                raise ValueError("The interpolants have already been calculated. Please set overwrite to True to overwrite the interpolants")
-            self._interpolants = []
-            self._derivatives = []
-            for index_list in sampling.clusters():
-                debug_info(self._debug, f"Calculating interpolant for cluster {index_list}")
-                _data = np.asarray([sampling.extract(i) for i in index_list])
-                # Check if values have already been calculated
-                if hasattr(sampling, "_values"):
-                    _values = np.asarray([sampling.extract_value(i) for i in index_list])
-                else:
-                    _values = None
-                coefficients, exponents = self.multivariate_interpolation(_data, _values, order = order, method = interpolation_method) 
-                self._interpolants.append(self.multivariate_polynomial(coefficients, exponents))
-                self._derivatives.append(self.multivariate_polynomial_derivative(coefficients, exponents))
-            debug_info(self._debug, f"Calculated {len(self._interpolants)} interpolants")
-    def multivariate_interpolation(self, samples : np.ndarray, values : np.ndarray, order = 2, method = 'default'):
-        """Calculates the coefficients of a multivariate polynomial interpolation.
-
-        This method can be used to construct a multivariate polynomial for arbitrary samples and data.
-        The usage is not restricted to the functional class but can be used for any multivariate polynomial interpolation.
-        If no values are given, the values are calculated by evaluating the function at the given samples.
-
-        This method is not computationally efficient since it explicitly constructs a possibly dense matrix
-        with high computational costs to solve the resulting linear system of equations.
-
-        The polynomial is of the form
-            f(x) = sum_{i=1}^{n} c_i * prod_{j=1}^{m} x_j^{e_{ij}}
-        where n is the number of coefficients, m is the dimension of the parameter space,
-        c_i are the coefficients and e_{ij} are the exponents of the summands.
-        The exponents have a maximal total order of the given order, meaning that
-        the sum of the exponents of each summand is smaller or equal to the given order.
-
-        The coefficients are calculated by solving the linear system of equations
-            A * c = v
-        where A is a matrix with the samples as rows and the summands as columns, c is a vector of the coefficients
-        and v is a vector of the values of the function at the samples.
-
-        Args:
-            samples (numpy.ndarray): Samples at which the function is evaluated
-            values (numpy.ndarray): Values of the function at the samples
-            order (int): Order of the polynomial
-            method (str): Method used to calculate the coefficients. Possible values are
-                            'default' and 'LS' (uses a least squares approximation)
-
+            x (numpy.ndarray): Point or points at which the gradient is calculated.
+                                Must be shape (n,m) or (m, ) where n is the number 
+                                of points and m is the dimension of the function.
+            **kwargs: Keyword arguments for the finite difference method. Can be:
+                        h (float): Step size for the finite difference method. Default is 1e-6
+                        order (int): Order of the finite difference method. Default is 2
         Returns:
-            np.ndarray: Coefficients of the multivariate polynomial interpolation
-            np.ndarray: Exponents of the summands
-            
-        Raises:
-            AssertionError: If the number of samples and values is not equal
-            AssertionError: If the number of coefficients is greater than the number of samples
-        """
-        from itertools import product
-        # Creates a list of all the possible exponents of the summands for the mutlivariate interpolation
-        # The exponents have a maximal total order of the given order, meaning that 
-        # the sum of the exponents of each summand is smaller or equal to the given order.
-        exponents=list(product(*([list(range(order+1))]*self.m)))
-        _remove=[]
-        for exponent in exponents:
-            if sum(exponent)>order:
-                _remove.append(exponent)
-        for exponent in _remove:
-            exponents.remove(exponent)
-
-        # Creates the matrix A to solve the linear system of equations to determine the coefficients by evaluating
-        # the polynomial at the given samples.
-        # If the least squares method is used as many samples as possible are used to determine the coefficients
-        # otherwise the number of samples is equal to the number of coefficients.
-        if method=='LS':
-            number_of_samples=np.shape(samples)[0]
-        else:
-            number_of_samples = len(exponents)
-
-        # If no values are given evaluate the function at the samples
-        if values is None:
-            assert(np.shape(samples)[0] >= number_of_samples), f"The number of samples must be greater or equal to the number of coefficients. Is {np.shape(samples)[0]} but should be {number_of_samples}"
-            debug_info(self._debug, f"Calculating {number_of_samples} values of the function, because none where given")
-            values = np.zeros(number_of_samples)
-            for i in range(number_of_samples):
-                values[i] = self.evaluate(samples[i,:])
-        else:
-            assert len(exponents) <= len(values), f"The number of samples must be greater or equal to the number of coefficients. Is {len(values)} but should be {len(exponents)}"
-            assert np.shape(samples)[0] == len(values), "The number of samples and values must be equal"
-            # Fake set the numer of calls to the function
-            if method == 'LS':
-                self._number_of_calls = len(values)
-            else:
-                self._number_of_calls = len(exponents)
-        
-        A=np.ones([number_of_samples, len(exponents)])
-        for i in range(number_of_samples):
-            for j, exponent in enumerate(exponents):
-                A[i,j]=np.prod(samples[i,:]**exponent)
-                
-        if method == 'LS':
-            c,_,_,_ = np.linalg.lstsq(A, values[:number_of_samples], rcond=None)
-        else:
-            c = np.linalg.solve(A, values[:number_of_samples])
-        return c, np.asarray(exponents)
-
-    def multivariate_polynomial(self, coefficients : np.ndarray, exponents : np.ndarray):
-        """Constructs a multivariate polynomial from the coefficients and exponents of the summands.
-
-        Args:
-            coefficients (numpy.ndarray): Coefficients of the summands
-            exponents (numpy.ndarray): Exponents of the summands
-
-        Returns:
-            function: Multivariate polynomial
-        """
-        return lambda x: np.dot([np.prod(np.power(x,exponents[k,:])) for k in range(len(exponents))], coefficients)   
-    
-    def multivariate_polynomial_derivative(self, coefficients : np.ndarray, exponents : np.ndarray):
-        """Constructs the derivative of a multivariate polynomial from the coefficients and exponents of the summands.
-
-        Args:
-            coefficients (numpy.ndarray): Coefficients of the summands
-            exponents (numpy.ndarray): Exponents of the summands
-
-        Returns:
-            function: Derivative of the multivariate polynomial
-        """
-        _dim = len(exponents[0])
-        return lambda x: [np.dot([np.prod(np.power(x[0:k], exponents[j,0:k])) * exponents[j,k]*x[k]**max(exponents[j,k]-1,0) * np.product(np.power(x[k+1:_dim], exponents[j,k+1:_dim])) for j in range(len(coefficients))], coefficients) for k in range(_dim)]  
-
-    def evaluate_interpolant(self, x : np.ndarray, sampling = None):
-        """Evaluates the interpolant at the given point, either locally or globally.
-
-        Args:
-            x (numpy.ndarray): Point at which the interpolant is evaluated
-            sampling (sampling, optional): sampling object that includes the clusters. Defaults to None.
-                                            If this argument is not none, the evaluation is done locally.
-        
-        Returns:
-            float: Value of the interpolant at the given point
+            numpy.ndarray: Gradient or gradients of the function at the given point or points.
+                            The shape is (n,m) or (m, ) depending on the size of the input.
 
         Raises:
-            AssertionError: If the dimension of the point is not equal to the dimension of the interpolant
-            ValueError: If no interpolant is found
+            AssertionError: If the dimension of the point is not equal to the dimension of the function
         """
-        assert len(x)==self.m, "x must have dimension m"
-        if hasattr(self, '_interpolant') and not self.use_clusters:
-            return self._interpolant(x)
-        elif hasattr(self, '_interpolants') and self.use_clusters:
-            if sampling is None or not hasattr(sampling, '_clusters'):
-                raise ValueError("No clusters given. Construct global interpolant or specify cluster.")
-            cluster_idx = sampling.obtain_index(x)
-            return self._interpolants[cluster_idx](x)
-        else:
-            raise ValueError("No interpolant found")
-    
-    def gradient(self, x : np.ndarray, sampling = None, order = 2, **kwargs):
-        """Calculates the gradient at the given point with the specified method.
+        if len(x.shape) == 1:
+            x = x.reshape(1, -1)
 
-        Args:
-            x (numpy.ndarray): Point at which the gradient is calculated
-            sampling (sampling, optional): sampling object that includes the clusters. Defaults to None.
-                                            If this argument is not none, the gradient is calculated locally.
-            order (int, optional): Order of the finite difference method. Defaults to 2.
+        assert x.shape[1] == self.m, "x must have dimension m"
 
-        Returns:
-            numpy.ndarray: Gradient at the given point
+        gradient = np.zeros((x.shape[0], self.m))
+        for i in range(x.shape[0]):
+            gradient[i,:] = self._finite_differences(x[i,:], **kwargs)
 
-        Raises:
-            AssertionError: If the dimension of the point is not equal to the dimension of the interpolant
-            ValueError: If no gradient method is specified
-        """
-        assert(len(x)==self.m)
-        if not hasattr(self, 'gradient_method'):
-            raise ValueError("No gradient method specified")
-        if self.gradient_method == "FD":
-            return self._finite_differences(x, order = order, **kwargs)
-        elif self.gradient_method == "A":
-            debug_info(self._debug, "Calculating gradient with analytical method")
-            return self._derivative(x)
-        elif self.gradient_method == "I":
-            if hasattr(self, '_interpolant') and not self.use_clusters:
-                return self._derivative(x)
-            elif hasattr(self, '_interpolants') and self.use_clusters:
-                if sampling == None or not hasattr(sampling, '_clusters'):
-                    raise ValueError("No clusters given. Construct global interpolant or specify cluster.")
-                cluster_idx = sampling.obtain_index(x)
-                return self._derivatives[cluster_idx](x)
-            else:
-                raise ValueError("No interpolant found")
-        else:
-            raise ValueError("No allowed gradient method specified")
+        if gradient.shape[0] == 1:
+            gradient = gradient.reshape(-1)
 
-# TODO tabulate_dof_coordinate instead mesh.geometry.x
+        return gradient
 
-    def _finite_differences(self, x : np.ndarray, h = 1e-6, order = 2, **kwargs):
+    def _finite_differences(self, x : np.ndarray, h = 1e-6, order = 2 **kwargs) -> np.ndarray:
         """Calculates the gradient of the interpolant at the given point using finite differences.
 
         Args:
@@ -420,3 +165,503 @@ class Functional:
             else:
                 raise ValueError(f"No implemented order of finite differences. Given order: {order}")
         return dfdx
+    
+class Analytical(Functional):
+    """
+    Class for functions with analytical and explicit derivatives.
+    
+    Attributes:
+    public:
+        m (int): Dimension of the function
+        f (callable): Function
+        df (callable): Derivative of the function
+    private:
+        _number_of_calls (int): Number of calls to the function
+        _debug (bool): Debug flag
+    
+    Methods:
+    public:
+        number_of_calls() -> int: Returns the number of calls to the function
+        reset_number_of_calls() -> None: Resets the number of calls to the function
+        evaluate(x : np.ndarray) -> float: Evaluates the function at a given point
+        gradient(x : np.ndarray) -> np.ndarray: Calculates the gradient of the function at the given point/points
+    private:
+        _finite_differences(x : np.ndarray, h = 1e-6, order = 2) -> np.ndarray: Calculates the gradient of the interpolant at the given point using finite differences.
+
+    Version:
+        0.2
+
+    Contributors:
+        Niklas Hornischer (nh605@cam.ac.uk)
+    """
+
+    def __init__(self, m : int, f: callable, df: callable, debug : bool = True) -> None:
+        """
+        Constructor for the Analytical class.
+        
+        Args:
+            m (int): Dimension of the function
+            f (callable): Function
+            df (callable): Derivative of the function
+            debug (bool, optional): Debug flag. Defaults to True.
+            
+        Raises:
+            AssertionError: If the derivative is not callable
+        """
+        super().__init__(m, f, debug = debug)
+
+        assert callable(df), "df must be a callable function"
+        self.df = df
+
+    def gradient(self, x : np.ndarray) -> np.ndarray:
+        """Calculates the gradient of the function at the given point/points.
+
+        Args:
+            x (numpy.ndarray): Point or points at which the gradient is calculated.
+                                Must be shape (n,m) or (m, ) where n is the number 
+                                of points and m is the dimension of the function.
+        Returns:
+            numpy.ndarray: Gradient or gradients of the function at the given point or points.
+                            The shape is (n,m) or (m, ) depending on the size of the input.
+
+        Raises:
+            AssertionError: If the dimension of the point is not equal to the dimension of the function
+        """
+        if len(x.shape) == 1:
+            x = x.reshape(1, -1)
+
+        assert x.shape[1] == self.m, "x must have dimension m"
+
+        gradient = np.zeros((x.shape[0], self.m))
+        for i in range(x.shape[0]):
+            gradient[i,:] = self.df(x[i,:])
+
+        if gradient.shape[0] == 1:
+            gradient = gradient.reshape(-1)
+
+        return gradient
+
+class Interpolation(Functional):
+    """
+    Class for the interpolation of a function using a given set of points and values.
+    
+    Attributes:
+    public:
+        m (int): Dimension of the parameter space
+        f (function): Function to be evaluated
+        samples (Sampling): Sampling object that may includes the clusters
+    private:
+        _number_of_calls (int): Number of calls to the function
+        _debug (bool): If True, debug information will be printed
+        _polynomial (callable): Polynomial object that is created after the interpolation
+        _derivative (callable): Derivative object that is created after the interpolation
+
+    Methods:
+    public:
+        gradient(x : np.ndarray) -> np.ndarray: Calculates the gradient at the given point or points.
+
+
+
+    Version:
+        0.2
+        
+    Contributors:
+        Niklas Hornischer (nh605@cam.ac.uk)
+    """
+
+    def __init__(self, m : int, f : callable, samples : Sampling, debug = True) -> None:
+
+        super().__init__(m, f, debug)
+        self.samples = samples
+
+    def gradient(self, x : np.ndarray) -> np.ndarray:
+        """Calculates the gradient at the given point or points by evaluating the polynomial.
+
+        Args:
+            x (numpy.ndarray): Point at which the gradient is calculated
+            sampling (sampling, optional): sampling object that includes the clusters. Defaults to None.
+                                            If this argument is not none, the gradient is calculated locally.
+            order (int, optional): Order of the finite difference method. Defaults to 2.
+
+        Returns:
+            numpy.ndarray: Gradient at the given point
+
+        Raises:
+            AssertionError: If the dimension of the point is not equal to the dimension of the interpolant
+            ValueError: If no derivative is found
+        """
+        if not hasattr(self, '_derivative'):
+            raise ValueError("No derivative found")
+
+        if len(x.shape) == 1:
+            x = x.reshape(1, -1)
+
+        assert x.shape[1] == self.m, "x must have dimension m"
+
+        gradient = np.zeros((x.shape[0], self.m))
+        for i in range(x.shape[0]):
+            if  not self.use_clustering:
+                gradient[i,:] = self._derivative(x[i,:])
+            else:
+                cluster_idx = self.samples.obtain_index(x[i,:])
+                gradient[i,:] = self._derivative[cluster_idx](x[i,:])
+
+        if gradient.shape[0] == 1:
+            gradient = gradient.reshape(-1)
+
+        return gradient
+
+    def interpolate(self, order : int = 2, overwrite : bool = False, use_clustering : bool = True,  **kwargs):
+        assert self.samples.m == self.m, "The dimension of the samples must match the dimension of the parameter space"
+
+        # Calculates the global interpolant
+        if not hasattr(self.samples, "_clusters") or not use_clustering:
+            exponents = self._create_exponents(order, **kwargs)
+            debug_info (self._debug, f"Calculating global interpolant with order {order} and {len(exponents)} exponents")
+
+            # Obtain the data for the interpolation
+            _data = self.samples.samples()[:len(exponents),:]
+            if hasattr(self.samples, "_values"):
+                _values = self.samples.values()[:len(exponents)]
+            else:
+                _values = np.asarray([self.evaluate(_data[i,:]) for i in range(len(exponents))])
+
+            coefficients = self.multivariate_interpolation(_data, _values, exponents)
+            if hasattr(self, "_polynomial") and not overwrite:
+                raise ValueError("The interpolant has already been calculated. Please set overwrite to True to overwrite the interpolant")
+            self._polynomial = self.multivariate_polynomial(coefficients, np.asarray(exponents))
+            self._derivative = self.multivariate_polynomial_derivative(coefficients, np.asarray(exponents))
+            self.use_clustering = False
+        
+        # Calculates multiple local interpolates based on the defined clusters
+        else: 
+            if hasattr(self, "_polynomial") and not overwrite:
+                raise ValueError("The interpolant have already been calculated. Please set overwrite to True to overwrite the interpolant")            
+            self._polynomial = []
+            self._derivative = []
+            for index_list in self.samples.clusters():
+                # Set number of coefficients to the minimum of the elements in the cluster 
+                # and the number of exponents given in **kwargs
+                exponents = self._create_exponents(order,maximal_samples = len(index_list), **kwargs)
+                debug_info (self._debug, f"Calculating local interpolant for cluster {index_list} with order {order} and {len(exponents)} exponents")
+
+                _data = np.asarray([self.samples.extract(i) for i in index_list])
+                # Check if values have already been calculated
+                if hasattr(self.samples, "_values"):
+                    _values = np.asarray([self.samples.extract_value(i) for i in index_list])
+                else:
+                    _values = np.asarray([self.evaluate(_data[i,:]) for i in range(len(exponents))])
+
+                _data = _data[:len(exponents),:]
+                _values = _values[:len(exponents)]
+                
+                coefficients = self.multivariate_interpolation(_data, _values, exponents) 
+                self._polynomial.append(self.multivariate_polynomial(coefficients, np.asarray(exponents)))
+                self._derivative.append(self.multivariate_polynomial_derivative(coefficients, np.asarray(exponents)))
+            self.use_clustering = True
+
+    def _create_exponents(self, order : int,  number_of_exponents = None, maximal_samples = None) -> list:
+        """Creates a list of all the possible exponents of the summands for the mutlivariate interpolation
+        The exponents have a maximal total order of the given order, meaning that 
+        the sum of the exponents of each summand is smaller or equal to the given order.
+
+        Args:
+            order (int): Order of the interpolant
+        Returns:
+            list: List of exponents
+        """
+        from itertools import product
+        exponents=list(product(*([list(range(order+1))]*self.m)))
+        _remove=[]
+        for exponent in exponents:
+            if sum(exponent)>order:
+                _remove.append(exponent)
+        for exponent in _remove:
+            exponents.remove(exponent)
+
+        if number_of_exponents == None:
+            number_of_exponents = self.samples.M
+
+        if maximal_samples != None:
+            number_of_exponents = min(number_of_exponents, maximal_samples)
+
+
+        if len(exponents)>number_of_exponents:
+            exponents = exponents[:number_of_exponents]
+        return exponents
+
+    
+    def multivariate_interpolation(self, samples : np.ndarray, values : np.ndarray, exponents : list):
+        # Creates the matrix A to solve the linear system of equations to determine the coefficients by evaluating
+        # the polynomial at the given samples.
+
+        assert np.shape(samples)[0] == len(values), f"The number of samples and values must be equal, but they are {np.shape(samples)} and {len(values)} respectively"
+
+        A=np.ones([len(exponents), len(exponents)])
+        for i in range(len(exponents)):
+            for j, exponent in enumerate(exponents):
+                A[i,j]=np.prod(samples[i,:]**exponent)
+                
+        c = np.linalg.solve(A, values)
+        return c
+
+    def multivariate_polynomial(self, coefficients : np.ndarray, exponents : np.ndarray):
+        """Constructs a multivariate polynomial from the coefficients and exponents of the summands.
+
+        Args:
+            coefficients (numpy.ndarray): Coefficients of the summands
+            exponents (numpy.ndarray): Exponents of the summands
+
+        Returns:
+            function: Multivariate polynomial
+        """
+        return lambda x: np.dot([np.prod(np.power(x,exponents[k,:])) for k in range(len(exponents))], coefficients)   
+    
+    def multivariate_polynomial_derivative(self, coefficients : np.ndarray, exponents : np.ndarray):
+        """Constructs the derivative of a multivariate polynomial from the coefficients and exponents of the summands.
+
+        Args:
+            coefficients (numpy.ndarray): Coefficients of the summands
+            exponents (numpy.ndarray): Exponents of the summands
+
+        Returns:
+            function: Derivative of the multivariate polynomial
+        """
+        _dim = len(exponents[0])
+        return lambda x: [np.dot([np.prod(np.power(x[0:k], exponents[j,0:k])) * exponents[j,k]*x[k]**max(exponents[j,k]-1,0) * np.product(np.power(x[k+1:_dim], exponents[j,k+1:_dim])) for j in range(len(coefficients))], coefficients) for k in range(_dim)]  
+
+    def approximate(self, x : np.ndarray) -> np.ndarray:
+        """Calculates the polynomial at the given point with the specified method.
+
+        Args:
+            x (numpy.ndarray): Point at which the gradient is calculated
+            sampling (sampling, optional): sampling object that includes the clusters. Defaults to None.
+                                            If this argument is not none, the gradient is calculated locally.
+            order (int, optional): Order of the finite difference method. Defaults to 2.
+
+        Returns:
+            numpy.ndarray: Gradient at the given point
+
+        Raises:
+            AssertionError: If the dimension of the point is not equal to the dimension of the interpolant
+            ValueError: If no gradient method is specified
+        """
+        if not hasattr(self, '_polynomial'):
+            raise ValueError("No polynomial found")
+
+        if len(x.shape) == 1:
+            x = x.reshape(1, -1)
+
+        assert x.shape[1] == self.m, "x must have dimension m"
+
+        values = np.zeros(x.shape[0])
+        for i in range(x.shape[0]):
+            if  not self.use_clustering:
+                values[i] = self._polynomial(x[i,:])
+            else:
+                cluster_idx = self.samples.obtain_index(x[i,:])
+                values[i] = self._polynomial[cluster_idx](x[i,:])
+
+        if values.shape[0] == 1:
+            values = values.reshape(-1)
+
+        return values
+
+class Regression(Functional):
+    def __init__(self, m: int, f: callable, samples : np.ndarray,  debug=True) -> None:
+        super().__init__(m, f, debug=debug)
+        self.samples = samples
+
+    
+    def gradient(self, x : np.ndarray) -> np.ndarray:
+        """Calculates the gradient at the given point with the specified method.
+
+        Args:
+            x (numpy.ndarray): Point at which the gradient is calculated
+            sampling (sampling, optional): sampling object that includes the clusters. Defaults to None.
+                                            If this argument is not none, the gradient is calculated locally.
+            order (int, optional): Order of the finite difference method. Defaults to 2.
+
+        Returns:
+            numpy.ndarray: Gradient at the given point
+
+        Raises:
+            AssertionError: If the dimension of the point is not equal to the dimension of the interpolant
+            ValueError: If no gradient method is specified
+        """
+        if not hasattr(self, '_derivative'):
+            raise ValueError("No derivative found")
+
+        if len(x.shape) == 1:
+            x = x.reshape(1, -1)
+
+        assert x.shape[1] == self.m, "x must have dimension m"
+
+        gradient = np.zeros((x.shape[0], self.m))
+        for i in range(x.shape[0]):
+            if  not self.use_clustering:
+                gradient[i,:] = self._derivative(x[i,:])
+            else:
+                cluster_idx = self.samples.obtain_index(x[i,:])
+                gradient[i,:] = self._derivative[cluster_idx](x[i,:])
+
+        if gradient.shape[0] == 1:
+            gradient = gradient.reshape(-1)
+
+        return gradient
+
+    def regression(self, order : int = 2, overwrite : bool = False, use_clustering : bool = True,  number_of_samples = None):
+        assert self.samples.m == self.m, "The dimension of the samples must match the dimension of the parameter space"
+
+        if number_of_samples == None:
+            number_of_samples = self.samples.M
+
+        # Calculates the global regressant
+        if not hasattr(self.samples, "_clusters") or not use_clustering:
+            exponents = self._create_exponents(order)
+            debug_info (self._debug, f"Calculating global regressant with order {order} and {len(exponents)} exponents and {number_of_samples} samples")
+
+            # Obtain the data for the interpolation
+            _data = self.samples.samples()[:number_of_samples,:]
+            if hasattr(self.samples, "_values"):
+                _values = self.samples.values()[:number_of_samples]
+            else:
+                _values = np.asarray([self.evaluate(_data[i,:]) for i in range(number_of_samples)])
+
+            coefficients = self.multivariate_interpolation(_data, _values, exponents)
+            if hasattr(self, "_polynomial") and not overwrite:
+                raise ValueError("The interpolant has already been calculated. Please set overwrite to True to overwrite the interpolant")
+            self._polynomial = self.multivariate_polynomial(coefficients, np.asarray(exponents))
+            self._derivative = self.multivariate_polynomial_derivative(coefficients, np.asarray(exponents))
+            self.use_clustering = False
+        
+        # Calculates multiple local regressant based on the defined clusters
+        else: 
+            if hasattr(self, "_polynomial") and not overwrite:
+                raise ValueError("The interpolant have already been calculated. Please set overwrite to True to overwrite the interpolant")            
+            self._polynomial = []
+            self._derivative = []
+            for index_list in self.samples.clusters():
+                # Set number of coefficients to the minimum of the elements in the cluster 
+                # and the number of exponents given in **kwargs
+                exponents = self._create_exponents(order)
+                debug_info (self._debug, f"Calculating local regressant for cluster {index_list} with order {order} and {len(exponents)} exponents")
+
+                _data = np.asarray([self.samples.extract(i) for i in index_list])
+                _data = _data[:min(len(index_list), number_of_samples),:]
+                # Check if values have already been calculated
+                if hasattr(self.samples, "_values"):
+                    _values = np.asarray([self.samples.extract_value(i) for i in index_list])
+                    _values = _values[:min(len(index_list), number_of_samples)]
+                else:
+                    _values = np.asarray([self.evaluate(_data[i,:]) for i in range(len(exponents))])
+
+                _data = _data[:len(exponents),:]
+                _values = _values[:len(exponents)]
+                
+                coefficients = self.multivariate_interpolation(_data, _values, exponents) 
+                self._polynomial.append(self.multivariate_polynomial(coefficients, np.asarray(exponents)))
+                self._derivative.append(self.multivariate_polynomial_derivative(coefficients, np.asarray(exponents)))
+            self.use_clustering = True
+
+    def _create_exponents(self, order : int) -> list:
+        """Creates a list of all the possible exponents of the summands for the mutlivariate interpolation
+        The exponents have a maximal total order of the given order, meaning that 
+        the sum of the exponents of each summand is smaller or equal to the given order.
+
+        Args:
+            order (int): Order of the interpolant
+        Returns:
+            list: List of exponents
+        """
+        from itertools import product
+        exponents=list(product(*([list(range(order+1))]*self.m)))
+        _remove=[]
+        for exponent in exponents:
+            if sum(exponent)>order:
+                _remove.append(exponent)
+        for exponent in _remove:
+            exponents.remove(exponent)
+        return exponents
+
+    
+    def multivariate_interpolation(self, samples : np.ndarray, values : np.ndarray, exponents : list):
+        # Creates the matrix A to solve the linear system of equations to determine the coefficients by evaluating
+        # the polynomial at the given samples.
+
+        assert np.shape(samples)[0] == len(values), f"The number of samples and values must be equal, but they are {np.shape(samples)} and {len(values)} respectively"
+
+        A=np.ones([samples.shape[0], len(exponents)])
+        for i in range(samples.shape[0]):
+            for j, exponent in enumerate(exponents):
+                A[i,j]=np.prod(samples[i,:]**exponent)
+                
+        c,_,_,_ = np.linalg.lstsq(A, values, rcond=None)
+        return c
+
+    def multivariate_polynomial(self, coefficients : np.ndarray, exponents : np.ndarray):
+        """Constructs a multivariate polynomial from the coefficients and exponents of the summands.
+
+        Args:
+            coefficients (numpy.ndarray): Coefficients of the summands
+            exponents (numpy.ndarray): Exponents of the summands
+
+        Returns:
+            function: Multivariate polynomial
+        """
+        return lambda x: np.dot([np.prod(np.power(x,exponents[k,:])) for k in range(len(exponents))], coefficients)   
+    
+    def multivariate_polynomial_derivative(self, coefficients : np.ndarray, exponents : np.ndarray):
+        """Constructs the derivative of a multivariate polynomial from the coefficients and exponents of the summands.
+
+        Args:
+            coefficients (numpy.ndarray): Coefficients of the summands
+            exponents (numpy.ndarray): Exponents of the summands
+
+        Returns:
+            function: Derivative of the multivariate polynomial
+        """
+        _dim = len(exponents[0])
+        return lambda x: [np.dot([np.prod(np.power(x[0:k], exponents[j,0:k])) * exponents[j,k]*x[k]**max(exponents[j,k]-1,0) * np.product(np.power(x[k+1:_dim], exponents[j,k+1:_dim])) for j in range(len(coefficients))], coefficients) for k in range(_dim)]  
+
+    def approximate(self, x : np.ndarray) -> np.ndarray:
+        """Calculates the polynoiaml at the given point.
+
+        Args:
+            x (numpy.ndarray): Point at which the polynomial is calculated
+            sampling (sampling, optional): sampling object that includes the clusters. Defaults to None.
+                                            If this argument is not none, the polynomial is calculated locally.
+            order (int, optional): Order of the finite difference method. Defaults to 2.
+
+        Returns:
+            numpy.ndarray: Polynomial at the given point
+
+        Raises:
+            AssertionError: If the dimension of the point is not equal to the dimension of the interpolant
+            ValueError: If no polynomial is specified
+        """
+        if not hasattr(self, '_polynomial'):
+            raise ValueError("No polynomial found")
+
+        if len(x.shape) == 1:
+            x = x.reshape(1, -1)
+
+        assert x.shape[1] == self.m, "x must have dimension m"
+
+        values = np.zeros(x.shape[0])
+        for i in range(x.shape[0]):
+            if  not self.use_clustering:
+                values[i] = self._polynomial(x[i,:])
+            else:
+                cluster_idx = self.samples.obtain_index(x[i,:])
+                values[i] = self._polynomial[cluster_idx](x[i,:])
+
+        if values.shape[0] == 1:
+            values = values.reshape(-1)
+
+        return values
+    
+
+    
+    
+

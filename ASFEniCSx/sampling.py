@@ -97,6 +97,33 @@ class Sampling:
         for i in range(self.m):
             self._array[:,i] = np.random.uniform(self._bounds[i,0], self._bounds[i,1], self.M)
 
+    def standard_gaussian(self, overwrite = False):
+        """Generates the samples using a standard gaussian distribution
+        
+        Generates the samples using a standard gaussian distribution with mean 0 and variance 1.
+        
+        Args:
+            overwrite (bool, optional): If True, overwrites the existing samples. Default is False.
+            
+        Raises:
+            AttributeError: If the samples already exist and overwrite is False
+            
+        """
+        if not hasattr(self, "_array"):
+            self._array = np.zeros((self.M, self.m))
+        elif not overwrite:
+            raise AttributeError("Samples already exist. Use overwrite = True to overwrite them")
+        for i in range(self.m):
+            self._array[:,i] = np.random.normal(0, 1, self.M)
+
+    def samples(self) -> np.ndarray:
+        """Returns the sampling array
+        
+        Returns:
+            numpy.ndarray: The sampling array
+        """
+        return np.copy(self._array)
+
     def extract(self, index : int):
         """Extracts the sample at the given index.
         
@@ -447,20 +474,20 @@ class Clustering(Sampling):
         scalarMap = cm.ScalarMappable(colors.Normalize(vmin=0, vmax=self.k),cmap=cmap)
         cluster_data = [np.asarray([self.extract(idx) for idx in self._clusters[i]]) for i in range(self.k)]
         if self.m == 1:
-            plt.figure("K-means clustering (1D)")
+            plt.figure("K-means clustering (1D)", figsize=(8,6))
             for i in range(self.k):
                 plt.plot(self._centroids[i,0], 0, 'x', color=scalarMap.to_rgba(i))
                 plt.scatter(cluster_data[i][:,0], np.zeros(cluster_data[i].shape[0]),color=scalarMap.to_rgba(i))
             plt.xlabel(r'$x_1$')
         elif self.m == 2:
-            plt.figure("K-means clustering (2D)")
+            plt.figure("K-means clustering (2D)", figsize=(8,6))
             for i in range(self.k):
                 plt.plot(self._centroids[i,0], self._centroids[i,1], 'x', color=scalarMap.to_rgba(i))
                 plt.scatter(cluster_data[i][:,0], cluster_data[i][:,1],color=scalarMap.to_rgba(i))
             plt.xlabel(r'$x_1$')
             plt.ylabel(r'$x_2$')
         elif self.m ==3:
-            plt.figure("K-means clustering (3D)")
+            plt.figure("K-means clustering (3D)", figsize=(8,6))
             ax = plt.axes(projection='3d')
             for i in range(self.k):
                 ax.scatter3D(cluster_data[i][:,0], cluster_data[i][:,1], cluster_data[i][:,2],color=scalarMap.to_rgba(i))
@@ -470,6 +497,7 @@ class Clustering(Sampling):
             ax.set_zlabel(r'$x_3$')
         else:
             raise ValueError("Cannot plot more than 3 dimensions")
+        plt.tight_layout()
         plt.savefig(filename, dpi=300, format="pdf")
 
     def load(self, data : dict, overwrite = False):
@@ -499,4 +527,3 @@ class Clustering(Sampling):
             clusters = data["_clusters"]
             for i in range(len(clusters)):
                 self._clusters.append(np.asarray(clusters[i]))
-

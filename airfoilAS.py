@@ -3,7 +3,7 @@ import gmsh
 
 import ASFEniCSx.utils as utils
 from ASFEniCSx.sampling import Sampling, Clustering
-from ASFEniCSx.functional import Functional
+from ASFEniCSx.functional import Functional, Interpolation
 from ASFEniCSx.asfenicsx import ASFEniCSx
 from ASFEniCSx.FEniCSxSim import FEniCSxSim
 
@@ -397,6 +397,13 @@ if __name__ == "__main__":
     dir = os.path.dirname(__file__)
     file = os.path.join(dir,"airfoilNavierStokes/samples.json")
 
+    simulation = stationaryNavierStokes()
+
+    # Define test problem
+    sample = np.random.uniform(-1, 1, m)
+    print(simulation.quantity_of_interest(sample))
+    simulation.save_solution(os.path.join(dir,"airfoilNavierStokes/solution.xdmf"), overwrite=True)
+
     # If sampling file exists, load it otherwise create it
     if os.path.isfile(file):
         samples = utils.load(file)
@@ -406,7 +413,8 @@ if __name__ == "__main__":
         samples.random_uniform()
         samples.detect()
         samples.save(file)
-    simulation = stationaryNavierStokes()
+
+    
     # Check if samples already include values
     if not hasattr(samples, "_values"):
         # Assing values to the samples in the parameter space
@@ -421,19 +429,12 @@ if __name__ == "__main__":
             samples.save(os.path.join(dir,"airfoilNavierStokes/samples.json"))
         progress.close()
 
-    # Define test problem
-    sample = np.random.uniform(-1, 1, m)
-    print(simulation.quantity_of_interest(sample))
-    simulation.save_solution(os.path.join(dir,"airfoilNavierStokes/solution.xdmf"), overwrite=True)
-    
     # Define the functional
-    cost = Functional(m, simulation.quantity_of_interest)
-
-    cost.interpolation(samples, order= 1, interpolation_method = "LS", clustering = True)
-    cost.get_gradient_method("I")
+    cost = Interpolation(m, simulation.quantity_of_interest, samples)
+    cost.interpolate()
 
     asfenicsx = ASFEniCSx(2, cost, samples)
     U, S = asfenicsx.estimation()
-    asfenicsx.plot_eigenvalues()
+    asfenicsx.plot_eigenvalues(os.path.join(dir,"airfoilNavierStoeks/eigenvalues.pdf"))
     print(U, S)
 

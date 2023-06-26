@@ -3,10 +3,14 @@ import math
 import os
 
 from ASFEniCSx.sampling import Clustering, Sampling
-from ASFEniCSx.functional import Functional
+# from ASFEniCSx.functional import Functional
+from ASFEniCSx.functional import Analytical, Functional, Interpolation, Regression
 from ASFEniCSx.asfenicsx import ASFEniCSx
+import ASFEniCSx.utils as utils
 
 import matplotlib.pyplot as plt
+
+plt.rcParams.update({'font.size': 16})
 
 if not os.path.exists("bivariateAnalyticalTest"):
     os.mkdir("bivariateAnalyticalTest")
@@ -25,7 +29,7 @@ def evaluate_f(x : list or np.array):
 
 def noisy_evaluate_f(x : list or np.array):
     f = math.exp(0.7 * x[0] + 0.3 * x[1])
-    return f + np.random.uniform(-0.1 * np.max(f), 0.1 * np.max(f))
+    return f + np.random.uniform(-0.05 * np.max(f), 0.05 * np.max(f))
 
 def calculate_df_dx(x : list or np.array):
     df_dx = np.zeros(len(x))
@@ -41,7 +45,7 @@ if __name__ == '__main__':
     for i,x in enumerate(x_range):
         for j,y in enumerate(y_range):
              data[i,j]= evaluate_f([x, y])
-    fig= plt.figure("Bivariate test function")
+    fig= plt.figure("Bivariate test function", figsize=(8,6))
     X,Y = np.meshgrid(x_range, y_range)
     plt.contourf(X,Y, data.T, 100)
     plt.colorbar()
@@ -50,7 +54,7 @@ if __name__ == '__main__':
 
     plt.arrow(0, 0, 0.7, 0.3, width = 0.02, color = 'r')
     plt.arrow(0.0, 0.0, -0.3, 0.7, width = 0.02, color = 'b')
-
+    plt.tight_layout()
     plt.savefig("figures/2D_function.pdf")
     plt.clf()
 
@@ -62,7 +66,7 @@ if __name__ == '__main__':
     samples.save(os.path.join(dir,"bivariate_samples.json"))
 
     # Plot clustering of the parameter space
-    plt.figure("Clustering of the parameter space")
+    plt.figure("Clustering of the parameter space", figsize=(8,6))
     from matplotlib import colors
     from matplotlib import cm
     cmap = plt.get_cmap('hsv')
@@ -70,275 +74,77 @@ if __name__ == '__main__':
     for x in x_range:
         for y in y_range:
             plt.plot(x,y,'o', color = scalarMap.to_rgba(samples.obtain_index(np.asarray([x,y]))))
+    plt.tight_layout()
     plt.savefig(os.path.join(dir,"figures/2D_clustering.pdf"))
     
 
     print("##############################################################Standard Test##############################################################")
     samples.assign_values(evaluate_f)
 
-    # Define the cost function
-    cost = Functional(2, evaluate_f)
-    cost.get_derivative(calculate_df_dx)
-
     """ 
     Perform a validation test of the differentiation methods
     by comparing the analytical derivative with the numerical
     """
+    # For the errors we investigate the mean value of the 
+    # Frobenious norm and maximum norm over all samples 
 
     # Analytical
-    cost.get_gradient_method('A')
-    A_data = np.zeros([100, 100, 2])
-    for i,x in enumerate(x_range):
-        for j,y in enumerate(y_range):
-            A_data[i,j,:] = cost.gradient([x, y])
+    analytical = Analytical(2, evaluate_f, calculate_df_dx)
 
-    # First Order Finite Differences
-    cost.get_gradient_method('FD')
-    FD_data = np.zeros([100, 100, 2])
-    for i,x in enumerate(x_range):
-        for j,y in enumerate(y_range):
-            FD_data[i,j,:] = cost.gradient([x, y], order = 1)
-    print("First Order Finite Differences")
-    print(f"\tError (Frobenius-Norm): {np.linalg.norm(A_data-FD_data)/np.linalg.norm(A_data)}")
-    print(f"\tError (inf-Norm): {np.max(A_data-FD_data)/np.max(A_data)}")
-    print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-    cost.reset_number_of_calls()
+    A_data = analytical.gradient(samples.samples())
 
-    # Second Order Finite Differences
-    cost.get_gradient_method('FD')
-    FD_data = np.zeros([100, 100, 2])
-    for i,x in enumerate(x_range):
-        for j,y in enumerate(y_range):
-            FD_data[i,j,:] = cost.gradient([x, y], order = 2)
-    print("Second Order Finite Differences")
-    print(f"\tError (Frobenius-Norm): {np.linalg.norm(A_data-FD_data)/np.linalg.norm(A_data)}")
-    print(f"\tError (inf-Norm): {np.max(A_data-FD_data)/np.max(A_data)}")
-    print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-    cost.reset_number_of_calls()
+    # Function
+    function = Functional(2, evaluate_f)
 
-    # Interpolation (global)
-    cost.get_gradient_method('I')
-    maximal_order = 3
+    utils.evaluate_derivative_FD(function, samples, os.path.join(dir,"figures/derivatives_FD.pdf"), A_data)
 
-    # Default interpolation method (NOT LEAST SQUARES)
-    interpolation_errors = np.zeros([maximal_order, 2])
-    interpolation_dev_errors = np.zeros([maximal_order, 2])
-    for k in range(1,maximal_order+1):
-        cost.interpolation(samples,order = k, overwrite=True)
-        data_interpolated = np.zeros([100, 100])
-        I_data = np.zeros([100, 100, 2])
-        for i,x in enumerate(x_range):
-            for j,y in enumerate(y_range):
-                data_interpolated[i,j] = cost.evaluate_interpolant([x, y])
-                I_data[i,j,:] = cost.gradient([x, y])
+    # Interpolation
+    interpolant = Interpolation(2, evaluate_f, samples)
+    utils.evaluate_derivative_interpolation(interpolant, 3, False, os.path.join(dir,"figures/derivatives_I.pdf"), A_data)
 
-        interpolation_errors[k-1,0] = np.linalg.norm(data-data_interpolated)/np.linalg.norm(data)
-        interpolation_errors[k-1,1] = np.max(data-data_interpolated)/np.max(data)
-        interpolation_dev_errors[k-1,0] = np.linalg.norm(A_data-I_data)/np.linalg.norm(A_data)
-        interpolation_dev_errors[k-1,1] = np.max(A_data-I_data)/np.max(A_data)
-        print(f"Interpolation (order = {k})")
-        print(f"\tInterpolation Error (Frobenius-Norm): {interpolation_errors[k-1,0]}")
-        print(f"\tInterpolation Error (inf-Norm): {interpolation_errors[k-1,1]}")
-        print(f"\tError (Frobenius-Norm): {interpolation_dev_errors[k-1,0]}")
-        print(f"\tError (inf-Norm): {interpolation_dev_errors[k-1,1]}")
-        print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
+    # Local Interpolation
+    utils.evaluate_derivative_interpolation(interpolant, 3, True, os.path.join(dir,"figures/derivatives_I_local.pdf"), A_data)
 
-        plt.figure("Default, global interpolation")
-        plt.contourf(X,Y, data_interpolated, 100)
-        plt.colorbar()
-        plt.xlabel(r'$x_1$')
-        plt.ylabel(r'$x_2$')
-        plt.savefig(f"figures/2D_interpolation_order_{k}.pdf")
-        plt.clf()
+    # Regression
+    regressant = Regression(2, evaluate_f, samples)
+    utils.evaluate_derivative_regression(regressant, 3, False, os.path.join(dir,"figures/derivatives_R.pdf"), A_data)
 
-        cost.reset_number_of_calls()
+    # Local Regression
+    utils.evaluate_derivative_regression(regressant, 3, True, os.path.join(dir,"figures/derivatives_R_local.pdf"), A_data)
 
-    # Least squares interpolation
-    least_squares_errors = np.zeros([maximal_order, 2])
-    least_squares_dev_errors = np.zeros([maximal_order, 2])
-    for k in range(1, maximal_order+1):
-        cost.interpolation(samples,order = k, interpolation_method="LS", overwrite=True)
-        data_LS = np.zeros([100, 100])
-        LS_data = np.zeros([100, 100, 2])
-        for i,x in enumerate(x_range):
-            for j,y in enumerate(y_range):
-                data_LS[i,j] = cost.evaluate_interpolant([x, y])
-                LS_data[i,j,:] = cost.gradient([x, y])
-        least_squares_errors[k-1,0] = np.linalg.norm(data-data_LS)/np.linalg.norm(data)
-        least_squares_errors[k-1,1] = np.max(data-data_LS)/np.max(data)
-        least_squares_dev_errors[k-1,0] = np.linalg.norm(A_data-LS_data)/np.linalg.norm(A_data)
-        least_squares_dev_errors[k-1,1] = np.max(A_data-LS_data)/np.max(A_data)
-        print(f"Least Squares Interpolation (order = {k})")
-        print(f"\tInterpolation Error (Frobenius-Norm): {least_squares_errors[k-1,0]}")
-        print(f"\tInterpolation Error (inf-Norm): {least_squares_errors[k-1,1]}")
-        print(f"\tError (Frobenius-Norm): {least_squares_dev_errors[k-1,0]}")
-        print(f"\tError (inf-Norm): {least_squares_dev_errors[k-1,1]}")
-        print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-
-        plt.figure("Least sqaures, global interpolation")
-        plt.contourf(X,Y, data_interpolated, 100)
-        plt.colorbar()
-        plt.xlabel(r'$x_1$')
-        plt.ylabel(r'$x_2$')
-        plt.savefig(f"figures/2D_least_squares_interpolation_order_{k}.pdf")
-        plt.clf()
-
-        cost.reset_number_of_calls()
-
-    # Local interpolation
-    local_errors = np.zeros([maximal_order, 2])
-    local_dev_errors = np.zeros([maximal_order, 2])
-    for k in range(1, maximal_order+1):
-        cost.interpolation(samples,order=k, interpolation_method="local", overwrite=True, clustering = True)
-        data_interpolated_local = np.zeros([100, 100])
-        I_data_local = np.zeros([100, 100, 2])
-        for i,x in enumerate(x_range):
-            for j,y in enumerate(y_range):
-                data_interpolated_local[i,j] = cost.evaluate_interpolant([x, y], samples)
-                I_data_local[i,j,:] = cost.gradient([x, y], samples)
-        local_errors[k-1,0] = np.linalg.norm(data-data_interpolated_local)/np.linalg.norm(data)
-        local_errors[k-1,1] = np.max(data-data_interpolated_local)/np.max(data)
-        local_dev_errors[k-1,0] = np.linalg.norm(A_data-I_data_local)/np.linalg.norm(A_data)
-        local_dev_errors[k-1,1] = np.max(A_data-I_data_local)/np.max(A_data)
-        print(f"Local Interpolation (order = {k})")
-        print(f"\tInterpolation Error (Frobenius-Norm): {local_errors[k-1,0]}")
-        print(f"\tInterpolation Error (inf-Norm): {local_errors[k-1,1]}")
-        print(f"\tError (Frobenius-Norm): {local_dev_errors[k-1,0]}")
-        print(f"\tError (inf-Norm): {local_dev_errors[k-1,1]}")
-        print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-
-        plt.figure("Local interpolation")
-        plt.contourf(X,Y, data_interpolated_local, 100)
-        plt.colorbar()
-        plt.xlabel(r'$x_1$')
-        plt.ylabel(r'$x_2$')
-        plt.savefig(f"figures/2D_local_interpolation_order_{k}.pdf")
-        plt.clf()
-
-        cost.reset_number_of_calls()
-
-
-    # Local least squares interpolation
-    local_least_squares_errors = np.zeros([maximal_order, 2])
-    local_least_squares_dev_errors = np.zeros([maximal_order, 2])
-    for k in range(1,   maximal_order+1):
-        cost.interpolation(samples, order=k, interpolation_method="LS", overwrite=True, clustering = True)
-        data_LS_local = np.zeros([100, 100])
-        LS_data_local = np.zeros([100, 100, 2])
-        for i,x in enumerate(x_range):
-            for j,y in enumerate(y_range):
-                data_LS_local[i,j] = cost.evaluate_interpolant([x, y], samples)
-                LS_data_local[i,j,:] = cost.gradient([x, y], samples)
-        local_least_squares_errors[k-1,0] = np.linalg.norm(data-data_LS_local)/np.linalg.norm(data)
-        local_least_squares_errors[k-1,1] = np.max(data-data_LS_local)/np.max(data)
-        local_least_squares_dev_errors[k-1,0] = np.linalg.norm(A_data-LS_data_local)/np.linalg.norm(A_data)
-        local_least_squares_dev_errors[k-1,1] = np.max(A_data-LS_data_local)/np.max(A_data)
-        print(f"Local Least Squares Interpolation (order = {k})")
-        print(f"\tInterpolation Error (Frobenius-Norm): {local_least_squares_errors[k-1,0]}")
-        print(f"\tInterpolation Error (inf-Norm): {local_least_squares_errors[k-1,1]}")
-        print(f"\tError (Frobenius-Norm): {local_least_squares_dev_errors[k-1,0]}")
-        print(f"\tError (inf-Norm): {local_least_squares_dev_errors[k-1,1]}")
-        print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-
-        plt.figure("Local Least squares interpolation")
-        plt.contourf(X,Y, data_LS_local, 100)
-        plt.colorbar()
-        plt.xlabel(r'$x_1$')
-        plt.ylabel(r'$x_2$')
-        plt.savefig(f"figures/2D_local_LS_order_{k}.pdf")
-        plt.clf()
-
-        cost.reset_number_of_calls()
-
-    fig,ax = plt.subplots()
-    ax.plot(range(1, maximal_order+1), interpolation_errors[:,0], label = "Global Interpolation")
-    ax.plot(range(1, maximal_order+1), least_squares_errors[:,0], label = "Global Least Squares Interpolation")
-    ax.plot(range(1, maximal_order+1), local_errors[:,0], label = "Local Interpolation")
-    ax.plot(range(1, maximal_order+1), local_least_squares_errors[:,0], label = "Local Least Squares Interpolation")
-    ax.set_xlabel("Order")
-    ax.set_xticks(range(1, maximal_order+1))
-    ax.set_ylabel("Frobenius Norm")
-    ax.legend()
-    ax2= ax.twinx()
-    ax2.plot(range(1, maximal_order+1), interpolation_errors[:,1], label = "Global Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), least_squares_errors[:,1], label = "Global Least Squares Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), local_errors[:,1], label = "Local Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), local_least_squares_errors[:,1], label = "Local Least Squares Interpolation", linestyle = ":")
-    ax2.set_ylabel("inf Norm (dotted)")
-    
-    fig.savefig("figures/2D_interpolation_errors.pdf")
-
-    fig,ax = plt.subplots()
-    ax.plot(range(1, maximal_order+1), interpolation_dev_errors[:,0], label = "Global Interpolation")
-    ax.plot(range(1, maximal_order+1), least_squares_dev_errors[:,0], label = "Global Least Squares Interpolation")
-    ax.plot(range(1, maximal_order+1), local_dev_errors[:,0], label = "Local Interpolation")
-    ax.plot(range(1, maximal_order+1), local_least_squares_dev_errors[:,0], label = "Local Least Squares Interpolation")
-    ax.set_xlabel("Order")
-    ax.set_xticks(range(1, maximal_order+1))
-    ax.set_ylabel("Frobenius Norm")
-    ax.legend()
-    ax2= ax.twinx()
-    ax2.plot(range(1, maximal_order+1), interpolation_dev_errors[:,1], label = "Global Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), least_squares_dev_errors[:,1], label = "Global Least Squares Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), local_dev_errors[:,1], label = "Local Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), local_least_squares_dev_errors[:,1], label = "Local Least Squares Interpolation", linestyle = ":")
-    ax2.set_ylabel("inf Norm (dotted)")
-
-
-    fig.savefig("figures/2D_interpolation_dev_errors.pdf")
     """
     Active Subspace Construction
     """
     print("Active Subspace")
     n= 2
-    asfenicsx = ASFEniCSx(n, cost, samples)
-
-    # Reset to analytical gradient
-    cost.get_derivative(calculate_df_dx)
-    cost.get_gradient_method('A')
-
+    asfenicsx = ASFEniCSx(n, analytical, samples)
     U, S = asfenicsx.estimation()
 
-    cost.get_gradient_method('FD')
-    asfenicsx.evaluate_gradients()
+    asfenicsx = ASFEniCSx(n, function, samples)
     U_FD, S_FD = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for FD: {cost.number_of_calls()}")
     print(f"\tError FD (EV, EW): {np.linalg.norm(U-U_FD)} , {np.linalg.norm(S-S_FD)}")
-    cost.reset_number_of_calls()
 
-    cost.interpolation(samples, overwrite = True)
-    cost.get_gradient_method('I')
-    asfenicsx.evaluate_gradients()
+    interpolant.interpolate(order = 2, overwrite = True, use_clustering = False)
+    asfenicsx = ASFEniCSx(n, interpolant, samples)
     U_I, S_I = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for interpolation: {cost.number_of_calls()}")
     print(f"\tError I (EV, EW): {np.linalg.norm(U-U_I)} , {np.linalg.norm(S-S_I)}")
-    cost.reset_number_of_calls()
 
-    cost.interpolation(samples, interpolation_method = "LS", overwrite = True)
-    cost.get_gradient_method('I')
-    asfenicsx.evaluate_gradients()
+    regressant.regression(order = 2, overwrite = True, use_clustering = False)
+    asfenicsx = ASFEniCSx(n, regressant, samples)
     U_LS, S_LS = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for least squares interpolation: {cost.number_of_calls()}")
     print(f"\tError LS (EV, EW): {np.linalg.norm(U-U_LS)} , {np.linalg.norm(S-S_LS)}")
-    cost.reset_number_of_calls()
 
-    cost.interpolation(samples, overwrite = True, clustering = True)
-    cost.get_gradient_method('I')
-    asfenicsx.evaluate_gradients()
+    interpolant.interpolate(order = 2, overwrite = True, use_clustering = True)
+    asfenicsx = ASFEniCSx(n, interpolant, samples)
     U_I_local, S_I_local = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for interpolation: {cost.number_of_calls()}")
     print(f"\tError I local (EV, EW): {np.linalg.norm(U-U_I_local)} , {np.linalg.norm(S-S_I_local)}")
-    cost.reset_number_of_calls()
 
-    cost.interpolation(samples, interpolation_method = "LS", overwrite = True, clustering = True)
-    cost.get_gradient_method('I')
-    asfenicsx.evaluate_gradients()
+    regressant.regression(order = 2, overwrite = True, use_clustering = True)
+    asfenicsx = ASFEniCSx(n, regressant, samples)
     U_LS_local, S_LS_local = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for local least squares interpolation: {cost.number_of_calls()}")
     print(f"\tError LS local (EV, EW): {np.linalg.norm(U-U_LS_local)} , {np.linalg.norm(S-S_LS_local)}")
-    cost.reset_number_of_calls()
 
-    fig= plt.figure("Active Subspace")
+    fig= plt.figure("Active Subspace", figsize=(12,9))
     X,Y = np.meshgrid(x_range, y_range)
     plt.contourf(X,Y, data.T, 100)
     plt.xlabel(r'$x_1$')
@@ -358,13 +164,13 @@ if __name__ == '__main__':
     
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'b', label="Interpolation")
+            plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'b', label="Global Interpolation")
         else:
             plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'b')
 
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'y', label="Least Squares")
+            plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'y', label="Global Regression")
         else:
             plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'y')
 
@@ -376,11 +182,11 @@ if __name__ == '__main__':
 
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'm', label="Local Least Squares")
+            plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'm', label="Local Regression")
         else:
             plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'm')
     
-    plt.legend(loc='lower right')
+    plt.legend(loc='upper left')
     ax = plt.gca()
     ax.set_aspect('equal', adjustable='box')
     plt.savefig("figures/2D_active_subspace.pdf")
@@ -399,6 +205,7 @@ if __name__ == '__main__':
     '''
     Noise Test
     '''
+    
     print("##############################################################Noise Test##############################################################")
 
 
@@ -410,276 +217,185 @@ if __name__ == '__main__':
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
-    noise_data= np.zeros((len(x_range), len(y_range)))
-    for i,x in enumerate(x_range):
-        for j,y in enumerate(y_range):
-             noise_data[i,j]= noisy_evaluate_f([x, y])
-    fig= plt.figure("Bivariate test function")
-    X,Y = np.meshgrid(x_range, y_range)
-    plt.contourf(X,Y, noise_data, 100)
-    plt.colorbar()
-    plt.xlabel(r'$x_1$')
-    plt.ylabel(r'$x_2$')
-    plt.savefig("figures/2D_function.pdf")
-    plt.clf()
-
     samples.assign_values(noisy_evaluate_f, overwrite = True)
-
-    # Define the cost function
-    cost = Functional(2, noisy_evaluate_f)
 
     """ 
     Perform a validation test of the differentiation methods
     by comparing the analytical derivative with the numerical
     """
+    # For the errors we investigate the mean value of the 
+    # Frobenious norm and maximum norm over all samples 
+
+    # Analytical
+    analytical = Analytical(2, noisy_evaluate_f, calculate_df_dx)
+
+    A_data = analytical.gradient(samples.samples())
+
+    # Function
+    function = Functional(2, noisy_evaluate_f)
 
     # First Order Finite Differences
-    cost.get_gradient_method('FD')
-    FD_data = np.zeros([100, 100, 2])
-    for i,x in enumerate(x_range):
-        for j,y in enumerate(y_range):
-            FD_data[i,j,:] = cost.gradient([x, y], order = 1)
-    print("First Order Finite Differences")
-    print(f"\tError (Frobenius-Norm): {np.linalg.norm(A_data-FD_data)/np.linalg.norm(A_data)}")
-    print(f"\tError (inf-Norm): {np.max(A_data-FD_data)/np.max(A_data)}")
-    print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-    cost.reset_number_of_calls()
-
-    # Second Order Finite Differences
-    cost.get_gradient_method('FD')
-    FD_data = np.zeros([100, 100, 2])
-    for i,x in enumerate(x_range):
-        for j,y in enumerate(y_range):
-            FD_data[i,j,:] = cost.gradient([x, y], order = 2)
-    print("Second Order Finite Differences")
-    print(f"\tError (Frobenius-Norm): {np.linalg.norm(A_data-FD_data)/np.linalg.norm(A_data)}")
-    print(f"\tError (inf-Norm): {np.max(A_data-FD_data)/np.max(A_data)}")
-    print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-    cost.reset_number_of_calls()
-
-    # Interpolation (global)
-    cost.get_gradient_method('I')
-    maximal_order = 3
-
-    # Default interpolation method (NOT LEAST SQUARES)
-    interpolation_errors = np.zeros([maximal_order, 2])
-    interpolation_dev_errors = np.zeros([maximal_order, 2])
-    for k in range(1,maximal_order+1):
-        cost.interpolation(samples,order = k, overwrite=True)
-        data_interpolated = np.zeros([100, 100])
-        I_data = np.zeros([100, 100, 2])
-        for i,x in enumerate(x_range):
-            for j,y in enumerate(y_range):
-                data_interpolated[i,j] = cost.evaluate_interpolant([x, y])
-                I_data[i,j,:] = cost.gradient([x, y])
-
-        interpolation_errors[k-1,0] = np.linalg.norm(data-data_interpolated)/np.linalg.norm(data)
-        interpolation_errors[k-1,1] = np.max(data-data_interpolated)/np.max(data)
-        interpolation_dev_errors[k-1,0] = np.linalg.norm(A_data-I_data)/np.linalg.norm(A_data)
-        interpolation_dev_errors[k-1,1] = np.max(A_data-I_data)/np.max(A_data)
-        print(f"Interpolation (order = {k})")
-        print(f"\tInterpolation Error (Frobenius-Norm): {interpolation_errors[k-1,0]}")
-        print(f"\tInterpolation Error (inf-Norm): {interpolation_errors[k-1,1]}")
-        print(f"\tError (Frobenius-Norm): {interpolation_dev_errors[k-1,0]}")
-        print(f"\tError (inf-Norm): {interpolation_dev_errors[k-1,1]}")
-        print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-
-        plt.figure("Default, global interpolation")
-        plt.contourf(X,Y, data_interpolated, 100)
-        plt.colorbar()
-        plt.xlabel(r'$x_1$')
-        plt.ylabel(r'$x_2$')
-        plt.savefig(f"figures/2D_interpolation_order_{k}.pdf")
-        plt.clf()
-
-        cost.reset_number_of_calls()
-
-    # Least squares interpolation
-    least_squares_errors = np.zeros([maximal_order, 2])
-    least_squares_dev_errors = np.zeros([maximal_order, 2])
-    for k in range(1, maximal_order+1):
-        cost.interpolation(samples,order = k, interpolation_method="LS", overwrite=True)
-        data_LS = np.zeros([100, 100])
-        LS_data = np.zeros([100, 100, 2])
-        for i,x in enumerate(x_range):
-            for j,y in enumerate(y_range):
-                data_LS[i,j] = cost.evaluate_interpolant([x, y])
-                LS_data[i,j,:] = cost.gradient([x, y])
-        least_squares_errors[k-1,0] = np.linalg.norm(data-data_LS)/np.linalg.norm(data)
-        least_squares_errors[k-1,1] = np.max(data-data_LS)/np.max(data)
-        least_squares_dev_errors[k-1,0] = np.linalg.norm(A_data-LS_data)/np.linalg.norm(A_data)
-        least_squares_dev_errors[k-1,1] = np.max(A_data-LS_data)/np.max(A_data)
-        print(f"Least Squares Interpolation (order = {k})")
-        print(f"\tInterpolation Error (Frobenius-Norm): {least_squares_errors[k-1,0]}")
-        print(f"\tInterpolation Error (inf-Norm): {least_squares_errors[k-1,1]}")
-        print(f"\tError (Frobenius-Norm): {least_squares_dev_errors[k-1,0]}")
-        print(f"\tError (inf-Norm): {least_squares_dev_errors[k-1,1]}")
-        print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-
-        plt.figure("Least sqaures, global interpolation")
-        plt.contourf(X,Y, data_interpolated, 100)
-        plt.colorbar()
-        plt.xlabel(r'$x_1$')
-        plt.ylabel(r'$x_2$')
-        plt.savefig(f"figures/2D_least_squares_interpolation_order_{k}.pdf")
-        plt.clf()
-
-        cost.reset_number_of_calls()
-
-    # Local interpolation
-    local_errors = np.zeros([maximal_order, 2])
-    local_dev_errors = np.zeros([maximal_order, 2])
-    for k in range(1, maximal_order+1):
-        cost.interpolation(samples,order=k, interpolation_method="local", overwrite=True, clustering = True)
-        data_interpolated_local = np.zeros([100, 100])
-        I_data_local = np.zeros([100, 100, 2])
-        for i,x in enumerate(x_range):
-            for j,y in enumerate(y_range):
-                data_interpolated_local[i,j] = cost.evaluate_interpolant([x, y], samples)
-                I_data_local[i,j,:] = cost.gradient([x, y], samples)
-        local_errors[k-1,0] = np.linalg.norm(data-data_interpolated_local)/np.linalg.norm(data)
-        local_errors[k-1,1] = np.max(data-data_interpolated_local)/np.max(data)
-        local_dev_errors[k-1,0] = np.linalg.norm(A_data-I_data_local)/np.linalg.norm(A_data)
-        local_dev_errors[k-1,1] = np.max(A_data-I_data_local)/np.max(A_data)
-        print(f"Local Interpolation (order = {k})")
-        print(f"\tInterpolation Error (Frobenius-Norm): {local_errors[k-1,0]}")
-        print(f"\tInterpolation Error (inf-Norm): {local_errors[k-1,1]}")
-        print(f"\tError (Frobenius-Norm): {local_dev_errors[k-1,0]}")
-        print(f"\tError (inf-Norm): {local_dev_errors[k-1,1]}")
-        print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-
-        plt.figure("Local interpolation")
-        plt.contourf(X,Y, data_interpolated_local, 100)
-        plt.colorbar()
-        plt.xlabel(r'$x_1$')
-        plt.ylabel(r'$x_2$')
-        plt.savefig(f"figures/2D_local_interpolation_order_{k}.pdf")
-        plt.clf()
-
-        cost.reset_number_of_calls()
-
-
-    # Local least squares interpolation
-    local_least_squares_errors = np.zeros([maximal_order, 2])
-    local_least_squares_dev_errors = np.zeros([maximal_order, 2])
-    for k in range(1,   maximal_order+1):
-        cost.interpolation(samples, order=k, interpolation_method="LS", overwrite=True, clustering = True)
-        data_LS_local = np.zeros([100, 100])
-        LS_data_local = np.zeros([100, 100, 2])
-        for i,x in enumerate(x_range):
-            for j,y in enumerate(y_range):
-                data_LS_local[i,j] = cost.evaluate_interpolant([x, y], samples)
-                LS_data_local[i,j,:] = cost.gradient([x, y], samples)
-        local_least_squares_errors[k-1,0] = np.linalg.norm(data-data_LS_local)/np.linalg.norm(data)
-        local_least_squares_errors[k-1,1] = np.max(data-data_LS_local)/np.max(data)
-        local_least_squares_dev_errors[k-1,0] = np.linalg.norm(A_data-LS_data_local)/np.linalg.norm(A_data)
-        local_least_squares_dev_errors[k-1,1] = np.max(A_data-LS_data_local)/np.max(A_data)
-        print(f"Local Least Squares Interpolation (order = {k})")
-        print(f"\tInterpolation Error (Frobenius-Norm): {local_least_squares_errors[k-1,0]}")
-        print(f"\tInterpolation Error (inf-Norm): {local_least_squares_errors[k-1,1]}")
-        print(f"\tError (Frobenius-Norm): {local_least_squares_dev_errors[k-1,0]}")
-        print(f"\tError (inf-Norm): {local_least_squares_dev_errors[k-1,1]}")
-        print(f"\tNumber of function evaluations: {cost.number_of_calls()}" )
-
-        plt.figure("Local Least squares interpolation")
-        plt.contourf(X,Y, data_LS_local, 100)
-        plt.colorbar()
-        plt.xlabel(r'$x_1$')
-        plt.ylabel(r'$x_2$')
-        plt.savefig(f"figures/2D_local_LS_order_{k}.pdf")
-        plt.clf()
-
-        cost.reset_number_of_calls()
-
-    fig,ax = plt.subplots()
-    ax.plot(range(1, maximal_order+1), interpolation_errors[:,0], label = "Global Interpolation")
-    ax.plot(range(1, maximal_order+1), least_squares_errors[:,0], label = "Global Least Squares Interpolation")
-    ax.plot(range(1, maximal_order+1), local_errors[:,0], label = "Local Interpolation")
-    ax.plot(range(1, maximal_order+1), local_least_squares_errors[:,0], label = "Local Least Squares Interpolation")
-    ax.set_xlabel("Order")
-    ax.set_xticks(range(1, maximal_order+1))
-    ax.set_ylabel("Frobenius Norm")
-    ax.legend()
-    ax2= ax.twinx()
-    ax2.plot(range(1, maximal_order+1), interpolation_errors[:,1], label = "Global Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), least_squares_errors[:,1], label = "Global Least Squares Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), local_errors[:,1], label = "Local Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), local_least_squares_errors[:,1], label = "Local Least Squares Interpolation", linestyle = ":")
-    ax2.set_ylabel("inf Norm (dotted)")
+    step_width = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8]
+    FD1_errors = np.zeros([len(step_width), 2])
+    for i, h in enumerate(step_width):
+        FD_data = function.gradient(samples.samples(), order = 1, h = h)
+        FD1_errors[i, 0] = np.linalg.norm(A_data-FD_data)/np.linalg.norm(A_data)
+        FD1_errors[i, 1] = np.max(np.abs(A_data-FD_data))/np.max(A_data)
     
-    fig.savefig("figures/2D_interpolation_errors.pdf")
+    # Second Order Finite Differences
+    FD2_errors = np.zeros([len(step_width), 2])
+    for i, h in enumerate(step_width):
+        FD_data = function.gradient(samples.samples(), order = 2, h = h)
+        FD2_errors[i, 0] = np.linalg.norm(A_data-FD_data)/np.linalg.norm(A_data)
+        FD2_errors[i, 1] = np.max(np.abs(A_data-FD_data))/np.max(A_data)
 
-    fig,ax = plt.subplots()
-    ax.plot(range(1, maximal_order+1), interpolation_dev_errors[:,0], label = "Global Interpolation")
-    ax.plot(range(1, maximal_order+1), least_squares_dev_errors[:,0], label = "Global Least Squares Interpolation")
-    ax.plot(range(1, maximal_order+1), local_dev_errors[:,0], label = "Local Interpolation")
-    ax.plot(range(1, maximal_order+1), local_least_squares_dev_errors[:,0], label = "Local Least Squares Interpolation")
-    ax.set_xlabel("Order")
-    ax.set_xticks(range(1, maximal_order+1))
-    ax.set_ylabel("Frobenius Norm")
-    ax.legend()
-    ax2= ax.twinx()
-    ax2.plot(range(1, maximal_order+1), interpolation_dev_errors[:,1], label = "Global Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), least_squares_dev_errors[:,1], label = "Global Least Squares Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), local_dev_errors[:,1], label = "Local Interpolation", linestyle = ":")
-    ax2.plot(range(1, maximal_order+1), local_least_squares_dev_errors[:,1], label = "Local Least Squares Interpolation", linestyle = ":")
-    ax2.set_ylabel("inf Norm (dotted)")
+    # Plot the errors
+    plt.figure(figsize=(8,6))
+    plt.plot(FD1_errors[:,0],color = "r", label = "1st-order")
+    plt.plot(FD1_errors[:,1],color = "r", linestyle = "dotted")
+    plt.plot(FD2_errors[:,0],color = "b", label = "2nd-order")
+    plt.plot(FD2_errors[:,1],color = "b", linestyle = "dotted")
+    plt.xlabel(r'$h$')
+    plt.xticks(np.arange(len(step_width)), step_width)
+    plt.yscale('log')
+    plt.ylabel(r'$\frac{|| \nabla_{FD}f-\nabla_{A} f ||}{||\nabla_{A} f ||}$')
+    plt.legend()
+    plt.tight_layout()
+    plt.grid()
+    plt.savefig(os.path.join(dir,"figures/derivatives_FD.pdf"))
 
+    # Interpolation
+    interpolant = Interpolation(2, noisy_evaluate_f, samples)
+    plt.figure(figsize=(8,6))
+    colors = ["r", "b", "g", "k"]
+    for order in range(3, 0, -1):
+        number_of_coefficients = range(1, math.comb(2+order, 2))
+        I_errors = np.zeros([len(number_of_coefficients), 2])
+        for i, n_coef in enumerate(number_of_coefficients):
+            interpolant.interpolate(order = order, number_of_exponents = n_coef, overwrite = True, use_clustering=False)
+            _data = interpolant.gradient(samples.samples())
+            I_errors[i, 0] = np.linalg.norm(A_data-_data)/np.linalg.norm(A_data)
+            I_errors[i, 1] = np.max(np.abs(A_data-_data))/np.max(A_data)
 
-    fig.savefig("figures/2D_interpolation_dev_errors.pdf")
+        plt.plot(number_of_coefficients, I_errors[:,0],color= colors[order-1], label = str(order)+"-order")
+        plt.plot(number_of_coefficients, I_errors[:,1],color= colors[order-1], linestyle = "dotted")
+    plt.xlabel(r'$n_{coef}$')
+    number_of_coefficients = range(1, math.comb(2+3, 2))
+    plt.xticks(range(1, len(number_of_coefficients)+1), number_of_coefficients)
+    plt.yscale('log')
+    plt.ylim([1e-3, 1e3])
+    plt.ylabel(r'$\frac{|| \nabla_{I}f-\nabla_{A} f ||}{||\nabla_{A} f ||}$')
+    plt.legend()
+    plt.tight_layout()
+    plt.grid()
+    plt.savefig(os.path.join(dir,"figures/derivatives_I.pdf"))
+
+    # Local Interpolation
+    interpolant = Interpolation(2, noisy_evaluate_f, samples)
+    plt.figure(figsize=(8,6))
+    colors = ["r", "b", "g", "k"]
+    for order in range(3, 0, -1):
+        number_of_coefficients = range(1, math.comb(2+order, 2))
+        I_errors = np.zeros([len(number_of_coefficients), 2])
+        for i, n_coef in enumerate(number_of_coefficients):
+            interpolant.interpolate(order = order, number_of_exponents = n_coef, overwrite = True, use_clustering=True)
+            _data = interpolant.gradient(samples.samples())
+            I_errors[i, 0] = np.linalg.norm(A_data-_data)/np.linalg.norm(A_data)
+            I_errors[i, 1] = np.max(np.abs(A_data-_data))/np.max(A_data)
+
+        plt.plot(number_of_coefficients, I_errors[:,0],color= colors[order-1], label = str(order)+"-order")
+        plt.plot(number_of_coefficients, I_errors[:,1],color= colors[order-1], linestyle = "dotted")
+    plt.xlabel(r'$n_{coef}$')
+    number_of_coefficients = range(1, math.comb(2+3, 2))
+    plt.xticks(range(1, len(number_of_coefficients)+1), number_of_coefficients)
+    plt.yscale('log')
+    plt.ylim([1e-3, 1e3])
+    plt.ylabel(r'$\frac{|| \nabla_{I}f-\nabla_{A} f ||}{||\nabla_{A} f ||}$')
+    plt.legend()
+    plt.tight_layout()
+    plt.grid()
+    plt.savefig(os.path.join(dir,"figures/derivatives_I_local.pdf"))
+
+    # Regression
+    regressant = Regression(2, noisy_evaluate_f, samples)
+    plt.figure(figsize=(8,6))
+    colors = ["r", "b", "g", "k"]
+    for order in range(3, 0, -1):
+        R_errors = np.zeros([100, 2])
+        for i in range(100):
+            regressant.regression(order = order, number_of_samples = i+1, overwrite = True, use_clustering=False)
+            _data = regressant.gradient(samples.samples())
+            R_errors[i, 0] = np.linalg.norm(A_data-_data)/np.linalg.norm(A_data)
+            R_errors[i, 1] = np.max(np.abs(A_data-_data))/np.max(A_data)
+
+        plt.plot(range(1, 101), R_errors[:,0],color= colors[order-1], label = str(order)+"-order")
+        plt.plot(range(1, 101), R_errors[:,1],color= colors[order-1], linestyle = "dotted")
+    plt.xlabel(r'$n_{samples}$')
+    plt.yscale('log')
+    plt.xscale('log')
+    plt.ylim([1e-3, 1e3])
+    plt.ylabel(r'$\frac{|| \nabla_{R}f-\nabla_{A} f ||}{||\nabla_{A} f ||}$')
+    plt.legend()
+    plt.tight_layout()
+    plt.grid()
+    plt.savefig(os.path.join(dir,"figures/derivatives_R.pdf"))
+
+    # Local Regression
+    regressant = Regression(2, noisy_evaluate_f, samples)
+    plt.figure(figsize=(8,6))
+    colors = ["r", "b", "g", "k"]
+    for order in range(3, 0, -1):
+        R_errors = np.zeros([100, 2])
+        for i in range(100):
+            regressant.regression(order = order, number_of_samples = i+1, overwrite = True, use_clustering=True)
+            _data = regressant.gradient(samples.samples())
+            R_errors[i, 0] = np.linalg.norm(A_data-_data)/np.linalg.norm(A_data)
+            R_errors[i, 1] = np.max(np.abs(A_data-_data))/np.max(A_data)
+
+        plt.plot(range(1, 101), R_errors[:,0],color= colors[order-1], label = str(order)+"-order")
+        plt.plot(range(1, 101), R_errors[:,1],color= colors[order-1], linestyle = "dotted")
+    plt.xlabel(r'$n_{samples}$')
+    plt.yscale('log')
+    plt.xscale('log')
+    plt.ylabel(r'$\frac{|| \nabla_{R}f-\nabla_{A} f ||}{||\nabla_{A} f ||}$')
+    plt.ylim([1e-3, 1e3])
+    plt.legend()
+    plt.tight_layout()
+    plt.grid()
+    plt.savefig(os.path.join(dir,"figures/derivatives_R_local.pdf"))
+    
+    
     """
     Active Subspace Construction
     """
     print("Active Subspace")
     n= 2
-    asfenicsx = ASFEniCSx(n, cost, samples)
 
-    # Reset to analytical gradient
-    cost.get_derivative(calculate_df_dx)
-    cost.get_gradient_method('A')
-
-    U, S = asfenicsx.estimation()
-
-    cost.get_gradient_method('FD')
-    asfenicsx.evaluate_gradients()
+    asfenicsx = ASFEniCSx(n, function, samples)
     U_FD, S_FD = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for FD-2: {cost.number_of_calls()}")
     print(f"\tError FD (EV, EW): {np.linalg.norm(U-U_FD)} , {np.linalg.norm(S-S_FD)}")
-    cost.reset_number_of_calls()
 
-    cost.interpolation(samples, overwrite = True)
-    cost.get_gradient_method('I')
-    asfenicsx.evaluate_gradients()
+    interpolant.interpolate(order = 2, overwrite = True, use_clustering = False)
+    asfenicsx = ASFEniCSx(n, interpolant, samples)
     U_I, S_I = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for interpolation-2: {cost.number_of_calls()}")
     print(f"\tError I (EV, EW): {np.linalg.norm(U-U_I)} , {np.linalg.norm(S-S_I)}")
-    cost.reset_number_of_calls()
 
-    cost.interpolation(samples, interpolation_method = "LS", overwrite = True)
-    cost.get_gradient_method('I')
-    asfenicsx.evaluate_gradients()
+    regressant.regression(order = 2, overwrite = True, use_clustering = False)
+    asfenicsx = ASFEniCSx(n, regressant, samples)
     U_LS, S_LS = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for least squares interpolation-2: {cost.number_of_calls()}")
     print(f"\tError LS (EV, EW): {np.linalg.norm(U-U_LS)} , {np.linalg.norm(S-S_LS)}")
-    cost.reset_number_of_calls()
 
-    cost.interpolation(samples, overwrite = True, clustering = True)
-    cost.get_gradient_method('I')
-    asfenicsx.evaluate_gradients()
+    interpolant.interpolate(order = 2, overwrite = True, use_clustering = True)
+    asfenicsx = ASFEniCSx(n, interpolant, samples)
     U_I_local, S_I_local = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for interpolation-2: {cost.number_of_calls()}")
     print(f"\tError I local (EV, EW): {np.linalg.norm(U-U_I_local)} , {np.linalg.norm(S-S_I_local)}")
-    cost.reset_number_of_calls()
 
-    cost.interpolation(samples, interpolation_method = "LS", overwrite = True, clustering = True)
-    cost.get_gradient_method('I')
-    asfenicsx.evaluate_gradients()
+    regressant.regression(order = 2, overwrite = True, use_clustering = True)
+    asfenicsx = ASFEniCSx(n, regressant, samples)
     U_LS_local, S_LS_local = asfenicsx.estimation()
-    print(f"\tNumer of function evaluations for least squares interpolation-2: {cost.number_of_calls()}")
     print(f"\tError LS local (EV, EW): {np.linalg.norm(U-U_LS_local)} , {np.linalg.norm(S-S_LS_local)}")
-    cost.reset_number_of_calls()
 
-    fig= plt.figure("Active Subspace")
+    fig= plt.figure("Active Subspace", figsize=(12,9))
     X,Y = np.meshgrid(x_range, y_range)
     plt.contourf(X,Y, data.T, 100)
     plt.xlabel(r'$x_1$')
@@ -699,13 +415,13 @@ if __name__ == '__main__':
     
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'b', label="Interpolation")
+            plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'b', label="Global Interpolation")
         else:
             plt.arrow(0, 0, U_I[0,i]/2, U_I[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'b')
 
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'y', label="Least Squares")
+            plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'y', label="Global Regression")
         else:
             plt.arrow(0, 0, U_LS[0,i]/2, U_LS[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'y')
 
@@ -717,11 +433,11 @@ if __name__ == '__main__':
 
     for i in range(n):
         if i ==0:
-            plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'm', label="Local Least Squares")
+            plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'm', label="Local Regression")
         else:
             plt.arrow(0, 0, U_LS_local[0,i]/2, U_LS_local[1,i]/2, width = 0.01, alpha = 0.5, linewidth = 5, color = 'm')
     
-    plt.legend(loc='lower right')
+    plt.legend(loc='upper left')
     ax = plt.gca()
     ax.set_aspect('equal', adjustable='box')
     plt.savefig("figures/2D_active_subspace.pdf")
@@ -733,7 +449,6 @@ if __name__ == '__main__':
     plt.plot(S_LS, 'y')
     plt.plot(S_I_local, 'c')
     plt.plot(S_LS_local, 'm')
-    plt.legend(["Analytical", "FD", "Interpolation", "Least Squares", "Local Interpolation", "Local Least Squares"])
+    plt.legend(["Analytical", "FD", "Global Interpolation", "Global Regression", "Local Interpolation", "Local Regression"])
     plt.savefig("figures/2D_active_subspace_eigenvalues.pdf")
-
-    plt.close('all')
+    plt.close("all")

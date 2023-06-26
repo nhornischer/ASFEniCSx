@@ -34,8 +34,8 @@ gdim = 2
 dir = os.path.dirname(__file__)
 
 # Check if directory parametrizedPoisson exists if not create it
-if not os.path.exists(os.path.join(dir,"parametrizedPoisson")):
-    os.makedirs(os.path.join(dir,"parametrizedPoisson"))
+if not os.path.exists(os.path.join(dir,"parametricPoisson")):
+    os.makedirs(os.path.join(dir,"parametricPoisson"))
 
 class ParametrizedPoisson(FEniCSxSim):
     def __init__(self, beta): 
@@ -84,49 +84,6 @@ class ParametrizedPoisson(FEniCSxSim):
         tdim = self.mesh.topology.dim
         fdim = tdim - 1
 
-        beta = self.physical_params["beta"]
-        num_nodes = self.mesh.geometry.x.shape[0]
-        vertices = self.mesh.geometry.x
-
-        def correlation_operator(s, t, beta):
-            # C(s,t) = exp(-\beta^{-1} ||s-t||_1)
-            return np.exp(-la.norm(s-t, ord=1)/beta)
-        
-        # Calculate the correlation matrix for the mesh grid
-        corr_mat = np.zeros((num_nodes, num_nodes))
-        progress = tqdm.autonotebook.tqdm(desc="Constructing Correlation Matrix", total=(num_nodes**2-num_nodes)//2)
-        for i in range(num_nodes):
-            s = vertices[i,:tdim]
-            for j in range(i,num_nodes):
-                t = vertices[j,:tdim]
-                # Evaluate only upper triangular part of the correlation matrix, because the correlation matrix is symmetric
-                corr_mat[i, j] = corr_mat[j, i] = correlation_operator(s, t, beta)
-                progress.update(1)
-        progress.close()
-        # Calculate the eigenpairs of the correlation matrix
-        eigenvalues, eigenvectors = eigsh(corr_mat,k=m)
-
-        # Sort eigenpairs in descending order
-        idx = eigenvalues.argsort()[::-1]
-        eigenvalues = eigenvalues[idx]
-        eigenvectors = eigenvectors[:,idx]
-
-        norm = la.norm(eigenvectors, axis=0)
-        eigenvectors = eigenvectors/norm
-        
-        self.eigenvalues = eigenvalues  
-        self.eigenvectors = eigenvectors
-
-        # Plot eigenvalues on a log axis
-        plt.figure()
-        plt.plot(eigenvalues)
-        plt.yscale('log')
-        plt.xlabel("Eigenvalue Index")
-        plt.ylabel("Eigenvalue")
-        plt.title("Eigenvalues of the Correlation Matrix")
-        plt.savefig(os.path.join(dir,"parametrizedPoisson/Correlation_eigenvalues.png"))
-        plt.close("all")
-
         """
         Define the problem
         """
@@ -154,11 +111,7 @@ class ParametrizedPoisson(FEniCSxSim):
         self.problem = fem.petsc.LinearProblem(bilinear, linear, bcs=[bc_D],petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
 
     def _update_problem(self, params):
-        num_nodes = self.mesh.geometry.x.shape[0]
-        log_a =np.zeros(num_nodes)
-        for i in range(m):
-            log_a += params[i]*self.eigenvalues[i]*self.eigenvectors[:,i]
-        self._a.vector[:] = np.exp(log_a)
+        self._a.interpolate(lambda x: params[0] + params[1]*x[0] + params[2]*x[1] + 1e-8*params[3]+ 1e-8*params[4])
 
     def _solve(self):
         self._solution = self.problem.solve()
@@ -179,23 +132,24 @@ class ParametrizedPoisson(FEniCSxSim):
 
 if __name__ == "__main__":
     # Dimensions of parameter space
-    m = 100
-    M = 300
+    m = 5
+    M = 30
 
     simulation = ParametrizedPoisson(0.1)
     simulation.create_mesh()
     simulation.define_problem()
 
     # Create test evaluation
-    sample = np.random.uniform(-1,1, m)
+    sample = np.random.uniform(0, 1, m)
+    sample = np.array([0,1.0,1.0,0.0,0.0])
     print(simulation.quantity_of_interest(sample))
-    simulation.save_solution(os.path.join(dir,"parametrizedPoisson/solution.xdmf"), overwrite=True)
+    simulation.save_solution(os.path.join(dir,"parametricPoisson/solution.xdmf"), overwrite=True)
 
     # TODO: Check if the simulation is correct especially the correlation matrix
 
     # Set the parameter values
     samples = Sampling(M,m)
-    samples.standard_gaussian()
+    samples.random_uniform()
     progress = tqdm.autonotebook.tqdm(desc="Solving Problem", total=M)
     for i in range(M):
         value = simulation.quantity_of_interest(samples.extract(i))
@@ -205,8 +159,10 @@ if __name__ == "__main__":
 
     cost = Functional(m, simulation.quantity_of_interest)
 
-    active_subspace = ASFEniCSx(20, cost, samples)
+    active_subspace = ASFEniCSx(m, cost, samples)
+  
 
     U, S = active_subspace.estimation()
-    active_subspace.plot_eigenvalues(os.path.join(dir,"parametrizedPoisson/eigenvalues.pdf"))
-
+    active_subspace.bootstrap(100)
+    active_subspace.plot_eigenvalues(os.path.join(dir,"parametricPoisson/eigenvalues.pdf"))
+    active_subspace.plot_eigenvectors(os.path.join(dir,"parametricPoisson/eigenvectors.pdf"))

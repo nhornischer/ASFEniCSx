@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from ASFEniCSx.utils import normalizer, denormalizer, load
 from ASFEniCSx.sampling import Sampling, Clustering
+from ASFEniCSx.functional import Interpolation, Regression
 
 
 class UtilsTest(unittest.TestCase):
@@ -115,28 +116,88 @@ class ClusteringTest(unittest.TestCase):
         self.data = np.concatenate(data)
         self.centroids = np.copy(centroids)
 
-    def test_kmeans(self):
-        fails = 0
-        successes = 0
-        while (successes == 0 or fails > successes) and fails + successes < 100 :
-            clustering = Clustering(np.shape(self.data)[0], np.shape(self.data)[1], np.shape(self.centroids)[0])
-            clustering._array = np.copy(self.data)
-            clustering.detect()
 
-            # Compare the true centroids with the clustering._centroids by 
-            # finding the closest centroid to each true centroid
-            sorted_centroids = np.copy(clustering._centroids)
-            for i in range(clustering.k):
-                sorted_centroids[i,:] = clustering._centroids[np.argmin(np.linalg.norm(clustering._centroids - self.centroids[i,:], axis=1)),:]
-            
-            if np.all(np.abs(sorted_centroids - self.centroids) < 1):
-                successes += 1
-            else:
-                fails += 1
-            
-        
+class InterpolationTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.linear_function = lambda x: np.sum(x)
+        self.quadratic_function = lambda x: np.sum(x**2)
 
-        self.assertTrue(successes > 0 and fails < successes and fails + successes < 100)
+    def test_linear_interpolation(self):
+        samples = Sampling(100, 10)
+        samples.random_uniform()
+        samples.assign_values(self.linear_function)
+
+        interpolant = Interpolation(10, self.linear_function, samples)
+        interpolant.interpolate(order = 1, use_clustering = False)
+        self.assertTrue(np.isclose(samples.values(), interpolant.approximate(samples.samples())).all())
+
+    def test_quadratic_interpolation(self):
+        samples = Sampling(100, 10)
+        samples.random_uniform()
+        samples.assign_values(self.quadratic_function)
+
+        interpolant = Interpolation(10, self.quadratic_function, samples)
+        interpolant.interpolate(order = 2, use_clustering = False)
+        self.assertTrue(np.isclose(samples.values(), interpolant.approximate(samples.samples())).all())
+
+    def test_linear_interpolation_with_clustering(self):
+        samples = Clustering(100, 10, 5)
+        samples.random_uniform()
+        samples.assign_values(self.linear_function)
+
+        interpolant = Interpolation(10, self.linear_function, samples)
+        interpolant.interpolate(order = 1, use_clustering = True)
+        self.assertTrue(np.isclose(samples.values(), interpolant.approximate(samples.samples())).all())
+
+    def test_quadratic_interpolation_with_clustering(self):
+        samples = Clustering(100, 10, 5)
+        samples.random_uniform()
+        samples.assign_values(self.quadratic_function)
+
+        interpolant = Interpolation(10, self.quadratic_function, samples)
+        interpolant.interpolate(order = 2, use_clustering = True)
+        self.assertTrue(np.isclose(samples.values(), interpolant.approximate(samples.samples())).all())
+
+class RegressionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.linear_function = lambda x: np.sum(x)
+        self.quadratic_function = lambda x: np.sum(x**2)
+
+    def test_linear_regression(self):
+        samples = Sampling(100, 10)
+        samples.random_uniform()
+        samples.assign_values(self.linear_function)
+
+        regression = Regression(10, self.linear_function, samples)
+        regression.regression(order = 1, use_clustering = False)
+        self.assertTrue(np.isclose(samples.values(), regression.approximate(samples.samples())).all())
+
+    def test_quadratic_regression(self):
+        samples = Sampling(100, 10)
+        samples.random_uniform()
+        samples.assign_values(self.quadratic_function)
+
+        regression = Regression(10, self.quadratic_function, samples)
+        regression.regression(order = 2, use_clustering = False)
+        self.assertTrue(np.isclose(samples.values(), regression.approximate(samples.samples())).all())
+
+    def test_linear_regression_with_clustering(self):
+        samples = Clustering(100, 10, 5)
+        samples.random_uniform()
+        samples.assign_values(self.linear_function)
+
+        regression = Regression(10, self.linear_function, samples)
+        regression.regression(order = 1, use_clustering = True)
+        self.assertTrue(np.isclose(samples.values(), regression.approximate(samples.samples())).all())
+
+    def test_quadratic_regression_with_clustering(self):
+        samples = Clustering(100, 10, 5)
+        samples.random_uniform()
+        samples.assign_values(self.quadratic_function)
+
+        regression = Regression(10, self.quadratic_function, samples)
+        regression.regression(order = 2, use_clustering = True)
+        self.assertTrue(np.isclose(samples.values(), regression.approximate(samples.samples())).all())
 
 if __name__ == '__main__':
     unittest.main()

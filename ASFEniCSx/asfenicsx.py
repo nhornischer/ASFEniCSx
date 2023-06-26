@@ -4,6 +4,8 @@ from ASFEniCSx.utils import debug_info
 from ASFEniCSx.sampling import Sampling
 from ASFEniCSx.functional import Functional
 
+import tqdm.autonotebook
+
 class ASFEniCSx:
     """Class for constructing the active subspace in FeniCSx based on Constantine et al. 
 
@@ -88,8 +90,14 @@ class ASFEniCSx:
         # Check if additional arguments are given
         debug_info(self._debug, "Evaluating gradients for active subspace construction")
         gradients = np.zeros([self.samples.M, self.samples.m])
+        if self._debug:
+            progress = tqdm.autonotebook.tqdm(total=self.samples.M, desc="Evaluating gradients", leave=True)
         for i in range(self.samples.M):
-            gradients[i] = self.function.gradient(self.samples.extract(i), self.samples, **kwargs)
+            gradients[i] = self.function.gradient(self.samples.extract(i), **kwargs)
+            if self._debug:
+                progress.update(1)
+        if self._debug:
+            progress.close()
         self.gradients = gradients
 
         # Normalize the gradients accroding to the chain rule with the bounds from the sampling space to the range [-1, 1]
@@ -203,13 +211,13 @@ class ASFEniCSx:
             for j in range(self.samples.m-1):
                 subspace_distances[j,i] = np.linalg.norm(np.dot(self._eigenvectors[:,:j+1].T, U[:,j+1:]), ord=2)
             eigenvalues[:,i] = S
-        sub_max = np.max(subspace_distances, axis=1)
-        sub_min = np.min(subspace_distances, axis=1)
+        sub_max = np.amax(subspace_distances, axis=1)
+        sub_min = np.amin(subspace_distances, axis=1)
         sub_mean = np.mean(subspace_distances, axis=1)
 
         # Compute the max and min of the eigenvalues over all bootstrap samples
-        e_max = np.max(eigenvalues, axis=1)
-        e_min = np.min(eigenvalues, axis=1)
+        e_max = np.amax(eigenvalues, axis=1)
+        e_min = np.amin(eigenvalues, axis=1)
 
         self.e_boot = [e_max, e_min]
         self.sub_boot = [sub_max, sub_min, sub_mean]
@@ -283,12 +291,16 @@ class ASFEniCSx:
         fig = plt.figure(filename)
         ax = fig.gca()
         ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+        if self.k == self.function.m:
+            k = self.function.m-1
+        else:
+            k = self.k
         if true_subspace is not None:
-            ax.plot(range(1, self.k), true_subspace[:self.k-1], marker="o", fillstyle="none", label="True")
-        ax.plot(range(1, self.k), self.sub_boot[2][:self.k-1], marker="x", fillstyle="none", label="Est")
+            ax.plot(range(1, k+1), true_subspace[:k], marker="o", fillstyle="none", label="True")
+        ax.plot(range(1, k+1), self.sub_boot[2][:k], marker="x", fillstyle="none", label="Est")
         if hasattr(self, "sub_boot"):
             debug_info(self._debug, "Plotting bootstrap bounds for subspace distances")
-            ax.fill_between(range(1, self.k), self.sub_boot[0][:self.k-1], self.sub_boot[1][:self.k-1], alpha=0.5, label = "BI")
+            ax.fill_between(range(1, k+1), self.sub_boot[0][:k], self.sub_boot[1][:k], alpha=0.5, label = "BI")
         plt.xlabel("Subspace Dimension")
         plt.yscale("log")
         plt.ylabel("Subspace Error")
@@ -317,9 +329,9 @@ class ASFEniCSx:
 
         for i in range(min(n, 2)):
             if n > 1:
-                fig = plt.figure(filename + f"univariate_{i+1}")
+                fig = plt.figure(filename + f"univariate_{i+1}.pdf")
             else:
-                fig = plt.figure(filename + f"univariate")
+                fig = plt.figure(filename + f"univariate.pdf")
             ax = fig.gca()
             ax.scatter(active_variable_values[:,i], values)
             if n > 1:
@@ -329,9 +341,9 @@ class ASFEniCSx:
             plt.ylabel("Function Value")
             plt.grid()
             if n > 1:
-                plt.savefig(filename + f"univariate_{i+1}")
+                plt.savefig(filename + f"univariate_{i+1}.pdf")
             else:
-                plt.savefig(filename + f"univariate")
+                plt.savefig(filename + f"univariate.pdf")
             plt.close()
         
         if n > 1 and n<=2:
@@ -346,7 +358,7 @@ class ASFEniCSx:
             plt.grid()
             
             plt.colorbar()
-            plt.savefig(filename + f"bivariate")
+            plt.savefig(filename + f"bivariate.pdf")
     
             plt.close()
 
@@ -371,7 +383,7 @@ class ASFEniCSx:
             if true_eigenvectors is not None:
                 ax.plot(range(1, self.k+1), true_eigenvectors[:,i], marker="o", fillstyle="none", label=f"True ({i+1}))")
             ax.plot(range(1, self.k+1), self._eigenvectors[:,i], marker="x", fillstyle="none", label=f"Est ({i+1})")
-        plt.xlabel("Index")
+        plt.xlabel("Parameter")
         plt.ylim([-1,1])
         plt.ylabel("Eigenvector")
         plt.legend()

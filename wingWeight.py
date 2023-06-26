@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ASFEniCSx.sampling import Sampling
-from ASFEniCSx.functional import Functional
+from ASFEniCSx.functional import Functional, Analytical
 from ASFEniCSx.asfenicsx import ASFEniCSx
 from ASFEniCSx.utils import debug_info, normalizer, denormalizer
 
@@ -78,28 +78,14 @@ samples = Sampling(M, m, 5)
 samples.set_domainBounds(np.array([[150, 200], [220, 300], [6,10], [-10, 10], [16, 45], [.5, 1], [.08, .18], [2.5, 6], [1700, 2500], [.025, .08]]))
 samples.random_uniform()
 
-func = Functional(m, wing)
-func.get_derivative(wing_grad)
+func = Analytical(m, wing, wing_grad)
 
 asfenicsx = ASFEniCSx(m, func, samples)
 asfenicsx.estimation()
 asfenicsx.bootstrap(100)
 
-asfenicsx.plot_eigenvalues(os.path.join(dir,"wingWeight","analytical_eigenvalues.png"))
-asfenicsx.plot_subspace(os.path.join(dir,"wingWeight","analytical_subspace.png"))
-asfenicsx.plot_eigenvectors(os.path.join(dir,"wingWeight","analytical_eigenvectors.png"), n = 2)
+asfenicsx.plot_eigenvalues(os.path.join(dir,"wingWeight","analytical_eigenvalues.pdf"))
+asfenicsx.plot_subspace(os.path.join(dir,"wingWeight","analytical_subspace.pdf"))
+asfenicsx.plot_eigenvectors(os.path.join(dir,"wingWeight","analytical_eigenvectors.pdf"), n = 2)
 asfenicsx.partition(2)
 asfenicsx.plot_sufficient_summary(os.path.join(dir,"wingWeight","analytical_sufficient_summary"))
-
-# TODO: These plots look weird
-
-func.interpolation(samples, order = 1, interpolation_method = "LS")
-func.get_gradient_method("I")
-
-asfenicsx.evaluate_gradients()
-asfenicsx.estimation()
-asfenicsx.bootstrap(100)
-asfenicsx.plot_eigenvalues(os.path.join(dir,"wingWeight","globalLinear_eigenvalues.png"))
-asfenicsx.plot_subspace(os.path.join(dir,"wingWeight","globalLinear_subspace.png"))
-
-plt.show()
