@@ -1,7 +1,11 @@
+import logging, logging.config
 import numpy as np
 import json
 
-from ASFEniCSx.utils import NumpyEncoder, denormalizer, normalizer, debug_info
+from ASFEniCSx.utils import NumpyEncoder, normalizer
+
+logging.config.fileConfig("logging.conf")
+logger = logging.getLogger('Sampling')
 
 class Sampling:
     """Class for sampling the domain of a parameter space
@@ -27,33 +31,33 @@ class Sampling:
     private:
         _array (numpy.ndarray): Array containing the samples with shape (M,m)
         _bounds (numpy.ndarray): Array containing the bounds of the original domain with shape (m,2)
-        _debug (bool): Debug flag
         _object_type (str): Type of the object (sampling or clustering) used for saving and loading.
     
     Methods:
     public:
-        random_uniform(overwrite : bool) -> None: Generates the samples using a uniform distribution  
-        extract(index : int) -> numpy.ndarray: Extracts a single sample from the array
+        random_uniform() -> None: Generates the samples using a uniform distribution
+        standard_gaussian(mean : float, variance : float) -> None: Generates the samples using a standard gaussian distribution
         samples() -> numpy.ndarray: Returns the sampling array
-        assign_values(f : callable) -> None: Assigns values to the samples using a function
-        assign_value(index : int, value : float) -> None: Assigns a value to a single sample
-        add_sample(sample : numpy.ndarray) -> None: Adds a sample to the sampling array or adds newly generated sample
-        extract_value(index : int) -> numpy.ndarray: Extracts the value of the sample at the given index
-        values() -> numpy.ndarray: Returns the array containing the values of the samples
-        index(sample : numpy.ndarray) -> int: Returns the index of the given sample in the sampling array
-        save(filename : str) -> None: Saves the sampling object to a json file
-        load(data : numpy.ndarray, overwrite : boolean) -> None: Loads the sampling object from a numpy array
+        extract(index : int) -> numpy.ndarray: Extracts the sample at the given index
+        set_domainBounds(bounds : numpy.ndarray) -> None: Sets the boundaries of the sampling domain
+        assign_values(f : callable) -> None: Assigns the values of the function f to the samples
+        assign_value(index : int, value : float) -> None: Assigns the value to the sample at the given index
+        extract_values(index : int) -> float: Extracts the values of the sample at the given index
+        values() -> numpy.ndarray: Returns the values of the samples
+        save(filename : str) -> float: Saves the sampling object to a json file
+    private:
+        _load(data : dict, overwrite : bool) -> float: Loads the sampling object from a json file
 
     Example:
         >>> samples = sampling(100, 10)
         >>> samples.random_uniform()
 
     Version:
-        0.1
+        0.2
     Contributors:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
-    def __init__(self, M : int, m : int, debug : bool = True) -> None:
+    def __init__(self, M : int, m : int) -> None:
         """Constructor for the sampling object
 
         Sets the sampling attributes M and m to the values passed to the
@@ -62,7 +66,6 @@ class Sampling:
         Args:
             M (int): Number of samples
             m (int): Dimension of the parameter space
-            debug (bool, optional): If True, prints debug information. Default is False.
 
         Raises: 
             AssertionError: If M or m are not greater than 0
@@ -70,51 +73,66 @@ class Sampling:
         assert M > 0, "Number of samples must be greater than 0"
         assert m > 0, "Dimension of parameter space must be greater than 0"
 
-        self._object_type = "sampling"
+        self._object_type = "Sampling"
         self.M = M
         self.m = m
-        self._debug = debug
     
-    def random_uniform(self, overwrite = False):
+    def random_uniform(self) -> None:
         """Generates the samples using a uniform distribution
         
-        Generates the samples using a uniform distribution with values from the defined domain boundaries.
-        
-        Args:
-            overwrite (bool, optional): If True, overwrites the existing samples. Default is False.
-            
-        Raises:
-            AttributeError: If the samples already exist and overwrite is False
-            
+        Generates the samples using a uniform distribution with values from the defined domain boundaries
+        or the default values [-1,1] if no bounds are specified.
         """
         if not hasattr(self, "_bounds"):
             self._bounds = np.array([[-1.0]*self.m, [1.0]*self.m]).T
-            debug_info(self._debug, "WARNING: NO BOUNDS DEFINED. USING DEFAULT BOUNDS [-1,1] FOR ALL PARAMETERS")
+            logger.info("No bounds were defined default bounds will be used [-1,1] for all variables")
         if not hasattr(self, "_array"):
             self._array = np.zeros((self.M, self.m))
-        elif not overwrite:
-            raise AttributeError("Samples already exist. Use overwrite = True to overwrite them")
+        else:
+            logger.warning("Samples already exist and are overwritten.")
+        
         for i in range(self.m):
             self._array[:,i] = np.random.uniform(self._bounds[i,0], self._bounds[i,1], self.M)
 
-    def standard_gaussian(self, overwrite = False):
+    def standard_gaussian(self, mean : float or np.ndarray = 0.0, variance : float or np.ndarray = 1.0) -> None:
         """Generates the samples using a standard gaussian distribution
         
-        Generates the samples using a standard gaussian distribution with mean 0 and variance 1.
+        Generates the samples using a standard gaussian distribution and normalizes .
+
         
         Args:
-            overwrite (bool, optional): If True, overwrites the existing samples. Default is False.
-            
-        Raises:
-            AttributeError: If the samples already exist and overwrite is False
+            mean (float or numpy.ndarray, optional): Mean of the gaussian distribution. Default is 0.0.
+            variance (float or numpy.ndarray, optional): Variance of the gaussian distribution. Default is 1.0.
             
         """
+        try:
+            mean.shape
+        except AttributeError:
+            logger.info("Only one mean value defined. Using same mean for all parameters")
+            mean = np.array([mean]*self.m)
+        else:
+            assert mean.shape == (self.m,), "Mean has wrong shape. Expected ({},) or (1,), got {}".format(self.m, mean.shape)
+
+        try:
+            variance.shape
+        except AttributeError:
+            logger.info("Only one variance value defined. Using same variance for all parameters")
+            variance = np.array([variance]*self.m)
+        else:
+            assert variance.shape == (self.m,), "Variance has wrong shape. Expected ({},) or (1,), got {}".format(self.m, variance.shape)
+
         if not hasattr(self, "_array"):
             self._array = np.zeros((self.M, self.m))
-        elif not overwrite:
-            raise AttributeError("Samples already exist. Use overwrite = True to overwrite them")
+        else:
+            logger.warning("Samples already exist and are overwritten")
         for i in range(self.m):
-            self._array[:,i] = np.random.normal(0, 1, self.M)
+            self._array[:,i] = np.random.normal(mean[i], variance[i], self.M)
+
+        if not hasattr(self, "_bounds"):
+            self._bounds = np.array([[np.min(self._array[:,i]), np.max(self._array[:,i])] for i in range(self.m)])
+            logger.info("No bounds were defined default bounds [min, max] will be used for all variables")
+        else:
+            self._array = normalizer(self._array, None , self._bounds)
 
     def samples(self) -> np.ndarray:
         """Returns the sampling array
@@ -124,14 +142,14 @@ class Sampling:
         """
         return np.copy(self._array)
 
-    def extract(self, index : int):
+    def extract(self, index : int) -> np.ndarray:
         """Extracts the sample at the given index.
         
         Args:   
             index (int): Index of the sample to be extracted
         
         Returns:
-            numpy.ndarray: Denormalized sample
+            numpy.ndarray: Sample at the given index
 
         Raises:
             AssertionError: If the index is out of bounds
@@ -140,18 +158,21 @@ class Sampling:
 
         return self._array[index,:]
         
-    def set_domainBounds(self, bounds : np.ndarray):
-        """Sets the boundaries of the original domain
+    def set_domainBounds(self, bounds : np.ndarray) -> None:
+        """Sets the boundaries of the sampling domain
         
         Args:
             bounds (numpy.ndarray): Array containing the boundaries of the original unnormalized domain
+        
+        Raises:
+            AssertionError: If the bounds have the wrong shape
         """
         assert bounds.shape == (self.m, 2), "Bounds have wrong shape. Expected ({},2), got {}".format(self.m, bounds.shape)
         if hasattr(self, "_array"):
-            raise(AttributeError("Samples already exist. Bounds can not be changed"))
+            logger.error("Samples already exist and thus have bounds already. Bounds are overwritten.")
         self._bounds = bounds
 
-    def assign_values(self, f : callable, overwrite = False):
+    def assign_values(self, f : callable) -> None:
         """Assigns values to the sampling object
 
         Assigns values to the sampling object by evaluating the given function at the samples.
@@ -163,14 +184,10 @@ class Sampling:
             TypeError: If the function is not callable
         """
         assert callable(f), "Function must be callable"
-        if hasattr(self, "_values") and not overwrite:
-            raise AttributeError("Values already exist. Use overwrite=True to overwrite them")
-        else:
-            self._values = np.zeros(self.M)
-            for i in range(self.M):
-                self._values[i] = f(self.extract(i))
+        for i in range(self.M):
+            self.assign_value(i, f(self.extract(i)))
 
-    def assign_value(self, index : int, value : float):
+    def assign_value(self, index : int, value : float) -> None:
         """Assigns a value to the sample at given index
         
         Args:
@@ -185,7 +202,7 @@ class Sampling:
             self._values = np.zeros(self.M)
         self._values[index] = value
 
-    def extract_value(self, index : int):
+    def extract_value(self, index : int) -> float:
         """Returns the value assigned to the sample at given index
         
         Args:
@@ -202,7 +219,7 @@ class Sampling:
         assert hasattr(self, "_values"), "Values have not been assigned yet"
         return self._values[index]
 
-    def values(self): 
+    def values(self) -> np.ndarray: 
         """Returns the values assigned to the samples
         
         Returns:
@@ -214,32 +231,7 @@ class Sampling:
         assert hasattr(self, "_values"), "Values have not been assigned yet"
         return self._values
     
-    def index(self, sample : np.ndarray):
-        """ Returns the index of the given sample in the sampling array
-        
-        Args:
-            sample (numpy.ndarray): The sample
-            
-        Returns:
-            int: The index of the sample in the sampling array
-            
-        Raises:
-            AssertionError: If the sample has the wrong shape
-            AssertionError: If the sample is not in the sampling array
-        """
-        assert sample.shape == (self.m,), "Sample has wrong shape"
-        assert sample in self._array, "Sample is not in the sampling array"
-        return np.where(self._array == sample)[0][0]
-    
-    def normalized_samples(self, interval : np.ndarray = np.asarray([-1.0, 1.0])):
-        """Returns the normalized samples
-        
-        Returns:
-            numpy.ndarray: The normalized samples
-        """
-        return normalizer(self._array,self._bounds, interval)
-    
-    def save(self, filename : str):
+    def save(self, filename : str) -> None:
         """Saves the sampling object to a json file
 
         Saves the sampling object to a json file. The file is saved in the current working directory.
@@ -254,7 +246,7 @@ class Sampling:
         with open(filename, "w") as f:
             json.dump(self.__dict__, f, cls=NumpyEncoder, indent = 3)
 
-    def load(self, data : dict, overwrite = False):
+    def _load(self, data : dict, overwrite : bool = False) -> None:
         """Loads array data into the sampling object
 
         Loads array data from dictionary into the sampling object. The array must have the shape (M,m) where M is the number of samples
@@ -302,24 +294,26 @@ class Clustering(Sampling):
     Methods:
     public:
         detect(): Detects the clusters
-        assign_clusters(data : numpy.ndarray) -> list: Assigns the samples to the clusters
-        update_centroids(clusters : list): Updates the centroids of the clusters
         plot(filename : str): Plots the clusters
         clusters() -> list: Returns the clusters
-        centroids() -> numpy.ndarray: Returns the centroids of the clusters
         cluster_index(x : numpy.ndarray) -> int: Returns the index of the cluster the sample belongs to
+    private:
+        _assign_clusters(data : numpy.ndarray) -> list: Assigns the samples to the clusters
+        _update_centroids(clusters : list) -> None: Updates the centroids of the clusters
+        _load(data : dict, overwrite = False) -> None: Loads array data into the sampling object
 
     Example:
-        >>> kmeans = clustering(100, 2, 5)
+        >>> kmeans = Clustering(100, 2, 5)
+        >>> kmeans.random_uniform()
         >>> kmeans.detect()
         >>> kmeans.plot("2D.pdf")
 
     Version:
-        0.1
+        0.2
     Contributors:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
-    def __init__(self, M : int, m : int,  k : int, max_iter = 1000):
+    def __init__(self, M : int, m : int,  k : int, max_iter = 1000) -> None:
         """Constructor of the clustering object
 
         Args:
@@ -333,32 +327,45 @@ class Clustering(Sampling):
         """
         assert 0 < k < M, "Number of clusters must be greater than 0 and less than the number of samples"
         super().__init__(M, m)
-        self.object_type = "clustering"
+        self._object_type = "Clustering"
         self.k = k
         self._max_iter = max_iter
     
-    def detect(self):
+    def detect(self, centroids : None or np.ndarray = None) -> None:
         """
         Detects the clusters using the k-means algorithm
+
+        Args:
+            centroids (None or numpy.ndarray, optional): If None, the centroids are initialized randomly. 
+            If numpy.ndarray, the centroids are initialized with the given array. Default is None.
+
         """
         # Initialize centroids as random for each parameter
-        centroids = np.zeros((self.k, self.m))
-        for i in range(self.m):
-            centroids[:,i] = np.random.uniform(self._bounds[i,0], self._bounds[i,1], self.k)
-        self._centroids = centroids
+        if centroids is None:
+            centroids = np.zeros((self.k, self.m))
+            for i in range(self.m):
+                centroids[:,i] = np.random.uniform(self._bounds[i,0], self._bounds[i,1], self.k)
+            self._centroids = centroids
+            logger.info("Centroids initialized randomly")
+        else:
+            assert centroids.shape == (self.k, self.m), "Centroids have wrong shape"
+            self._centroids = centroids
 
-        #TODO: Make centroids depending on each parameter
         _prev_centroids = np.zeros((self.k, self.m))
         _iter=0
         while not np.isclose(self._centroids, _prev_centroids).all() and _iter < self._max_iter:
             _prev_centroids = self._centroids.copy()
             _clusters = self._assign_clusters(self._array)
             self._update_centroids(_clusters)
-            debug_info(self._debug, f"Iteration: {_iter + 1}, Maximum centroid update: {np.max(abs(_prev_centroids - self._centroids))}, Are previous and current centroid not equal? {np.not_equal(self._centroids, _prev_centroids).any()}, Are previous and current centroid equal? {np.equal(self._centroids, _prev_centroids).all()}")
+            logger.debug( f"Iteration: {_iter + 1}, Maximum centroid update: {np.max(abs(_prev_centroids - self._centroids))}, Are previous and current centroid not equal? {np.not_equal(self._centroids, _prev_centroids).any()}, Are previous and current centroid equal? {np.equal(self._centroids, _prev_centroids).all()}")
             _iter += 1
+        if _iter == self._max_iter:
+            logger.warning("Maximum number of iterations reached")
+        else:
+            logger.info(f"Convergence reached after {_iter} iterations")
         self._clusters = _clusters
     
-    def clusters(self):
+    def clusters(self) -> list:
         """Returns the clusters
 
         Returns:
@@ -366,7 +373,7 @@ class Clustering(Sampling):
         """
         return self._clusters
 
-    def _assign_clusters(self, data : np.ndarray):
+    def _assign_clusters(self, data : np.ndarray) -> list:
         """Assigns the samples to the clusters
 
         This method can be used to assign samples to the clusters and is called by the detect method.
@@ -388,11 +395,11 @@ class Clustering(Sampling):
         assert np.shape(data)[1] == self.m, "Dimension of data does not match dimension of parameter space"
         _clusters=[[] for _ in range(self.k)]
         for i,x in enumerate(data):
-            idx = self._cluster_index(x)
+            idx = self.cluster_index(x)
             _clusters[idx].append(i)
         return _clusters
 
-    def _cluster_index(self, x : np.ndarray):
+    def cluster_index(self, x : np.ndarray) -> int:
         """Returns the index of the cluster to which the sample belongs
 
         Args:
@@ -406,35 +413,14 @@ class Clustering(Sampling):
             AssertionError: If the dimension of the data does not match the dimension of the parameter space
         """
         assert hasattr(self, "_centroids"), "Centroids have not been initialized"
-        assert np.shape(x)[0] == self.m, "Dimension of data does not match dimension of parameter space"
-        distances = np.linalg.norm(self._centroids-x, axis=1)
+        assert np.shape(x) == (self.m,), "Dimension of data does not match dimension of parameter space"
+        normalized_x = normalizer(x, self._bounds)
+        normalized_centroids = normalizer(self._centroids, self._bounds)
+        distances = np.linalg.norm(normalized_centroids-normalized_x, axis=1)
         cluster_idx = np.argmin(distances)
         return cluster_idx
-    
-    def obtain_index(self, x : np.ndarray):
-        """Returns the cluster index of the sample
 
-        Args:
-            x (numpy.ndarray): Sample to be assigned to a cluster
-
-        Returns:
-            int: Cluster index of the sample
-
-        Raises:
-            AssertionError: If the centroids have not been initialized
-            AssertionError: If the dimension of the data does not match the dimension of the parameter space
-        """
-        assert hasattr(self, "_centroids"), "Centroids have not been initialized"
-        assert np.shape(x)[0] == self.m, "Dimension of data does not match dimension of parameter space"
-        
-        distances = np.linalg.norm(self._centroids-x, axis=1)
-        idx = np.argmin(distances)
-        # Check if index is valid
-        if idx >= self.k:
-            raise ValueError("Index is not valid")
-        return idx
-
-    def _update_centroids(self, _clusters : list):
+    def _update_centroids(self, _clusters : list) -> None:
         """Updates the centroids of the clusters
 
         This method can be used to update the centroids of the clusters and is called by the detect method.
@@ -449,11 +435,11 @@ class Clustering(Sampling):
         """
         for i, centroid in enumerate(self._centroids):
             cluster_data = np.asarray([self.extract(idx) for idx in _clusters[i]])
-            _new_centroid = denormalizer(np.mean(normalizer(cluster_data, self._bounds), axis=0), self._bounds)
+            _new_centroid = np.mean(cluster_data, axis=0)
             if not np.isnan(centroid).any():
                 self._centroids[i] = _new_centroid
     
-    def plot(self, filename = "kmeans.pdf"):
+    def plot(self, filename : str = "kmeans.pdf") -> None:
         """Plots the clusters in the parameter space
         
         To visualize the figures, use plt.show() after calling this method. 
@@ -474,20 +460,23 @@ class Clustering(Sampling):
         scalarMap = cm.ScalarMappable(colors.Normalize(vmin=0, vmax=self.k),cmap=cmap)
         cluster_data = [np.asarray([self.extract(idx) for idx in self._clusters[i]]) for i in range(self.k)]
         if self.m == 1:
-            plt.figure("K-means clustering (1D)", figsize=(8,6))
+            plt.figure(figsize=(8,6))
             for i in range(self.k):
                 plt.plot(self._centroids[i,0], 0, 'x', color=scalarMap.to_rgba(i))
                 plt.scatter(cluster_data[i][:,0], np.zeros(cluster_data[i].shape[0]),color=scalarMap.to_rgba(i))
             plt.xlabel(r'$x_1$')
+            plt.xlim(self._bounds[0,0], self._bounds[0,1])
         elif self.m == 2:
-            plt.figure("K-means clustering (2D)", figsize=(8,6))
+            plt.figure(figsize=(8,6))
             for i in range(self.k):
                 plt.plot(self._centroids[i,0], self._centroids[i,1], 'x', color=scalarMap.to_rgba(i))
                 plt.scatter(cluster_data[i][:,0], cluster_data[i][:,1],color=scalarMap.to_rgba(i))
             plt.xlabel(r'$x_1$')
             plt.ylabel(r'$x_2$')
+            plt.xlim(self._bounds[0,0], self._bounds[0,1])
+            plt.ylim(self._bounds[1,0], self._bounds[1,1])
         elif self.m ==3:
-            plt.figure("K-means clustering (3D)", figsize=(8,6))
+            plt.figure(figsize=(8,6))
             ax = plt.axes(projection='3d')
             for i in range(self.k):
                 ax.scatter3D(cluster_data[i][:,0], cluster_data[i][:,1], cluster_data[i][:,2],color=scalarMap.to_rgba(i))
@@ -495,12 +484,15 @@ class Clustering(Sampling):
             ax.set_xlabel(r'$x_1$')
             ax.set_ylabel(r'$x_2$')
             ax.set_zlabel(r'$x_3$')
+            ax.set_xlim(self._bounds[0,0], self._bounds[0,1])
+            ax.set_ylim(self._bounds[1,0], self._bounds[1,1])
+            ax.set_zlim(self._bounds[2,0], self._bounds[2,1])
         else:
             raise ValueError("Cannot plot more than 3 dimensions")
         plt.tight_layout()
-        plt.savefig(filename, dpi=300, format="pdf")
+        plt.savefig(filename, format="pdf")
 
-    def load(self, data : dict, overwrite = False):
+    def _load(self, data : dict, overwrite : bool = False) -> None:
         """
         Loads the data into the clustering object
         
@@ -515,7 +507,7 @@ class Clustering(Sampling):
             ValueError: If the clusters have already been initialized and overwrite is False
             
         """
-        super().load(data, overwrite=True)
+        super()._load(data, overwrite=True)
         if hasattr(self, "_centroids") and not overwrite:
             raise ValueError("Centroids have already been initialized. Set overwrite=True to overwrite the data.")
         else:
