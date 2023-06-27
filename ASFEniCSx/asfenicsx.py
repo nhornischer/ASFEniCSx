@@ -1,10 +1,13 @@
+import logging, logging.config
 import numpy as np
 
-from ASFEniCSx.utils import debug_info
 from ASFEniCSx.sampling import Sampling
 from ASFEniCSx.functional import Functional
 
 import tqdm.autonotebook
+
+logging.config.fileConfig("logging.conf")
+logger = logging.getLogger('ASFEniCSx')
 
 class ASFEniCSx:
     """Class for constructing the active subspace in FeniCSx based on Constantine et al. 
@@ -50,14 +53,13 @@ class ASFEniCSx:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
 
-    def __init__(self, k : int, function : Functional, samples : Sampling, debug = True):
+    def __init__(self, k : int, function : Functional, samples : Sampling):
         """Constructor for the ASFEniCSx class
 
         Args:
             k (int): Number of eigenvalues of interest
             function (functional): functional describing the quantity of interest
             samples (sampling): sampling object containing the samples
-            debug (bool, optional): If True, debug information is printed. Defaults to False.
 
         Raises:
             ValueError: If n is larger than the number of dimensions of the parameter space
@@ -66,7 +68,6 @@ class ASFEniCSx:
         self.k = k
         self.function = function
         self.samples = samples
-        self._debug = debug
 
     def eigenvalues(self):
         """Returns the eigenvalues of the covariance matrix
@@ -88,15 +89,15 @@ class ASFEniCSx:
         """
 
         # Check if additional arguments are given
-        debug_info(self._debug, "Evaluating gradients for active subspace construction")
         gradients = np.zeros([self.samples.M, self.samples.m])
-        if self._debug:
+        if logging.INFO >= logger.level:
+            logger.info("Evaluating gradients for active subspace construction")
             progress = tqdm.autonotebook.tqdm(total=self.samples.M, desc="Evaluating gradients", leave=True)
         for i in range(self.samples.M):
             gradients[i] = self.function.gradient(self.samples.extract(i), **kwargs)
-            if self._debug:
+            if logging.INFO >= logger.level:
                 progress.update(1)
-        if self._debug:
+        if logging.INFO >= logger.level:
             progress.close()
         self.gradients = gradients
 
@@ -120,8 +121,15 @@ class ASFEniCSx:
             np.ndarray: Approximated covariance matrix with dimensions m x m    
         """
         covariance = np.zeros([self.samples.m, self.samples.m])
+        if logging.INFO >= logger.level:
+            logger.info("Constructing the covariance matrix")
+            progress = tqdm.autonotebook.tqdm(total=self.samples.M, desc="Constructing Covariance Matrix", leave=True)
         for i in range(self.samples.M):
             covariance += np.outer(gradients[i,:], gradients[i,:])
+            if logging.INFO >= logger.level:
+                progress.update(1)
+        if logging.INFO >= logger.level:
+            progress.close()
         covariance = covariance / self.samples.M
 
         return covariance
@@ -138,12 +146,11 @@ class ASFEniCSx:
         """
 
         # Evaluate the gradients of the function at the samples
-        debug_info(self._debug, "Constructing the active subspace using the random sampling algorithm")
+        logger.info("Constructing the active subspace using the random sampling algorithm")
         if not hasattr(self, 'gradients'):
-            debug_info(self._debug, "Evaluating gradients for active subspace construction")
             self.evaluate_gradients()
         else:
-            print("WARNING: Gradients already evaluated, skipping evaluation. Make sure the gradients are up to date.")
+            logger.warning("Gradients are already evaluated, skipping evaluation. Make sure the gradients are up to date.")
 
         # Construct the covariance matrix
         convariance_matrix = self.covariance(self.gradients)
@@ -154,7 +161,7 @@ class ASFEniCSx:
         self._eigenvalues = S
         self._eigenvectors = U
 
-        debug_info(self._debug, f"Active subspace constructed")
+        logger.info(f"Active subspace constructed")
 
         return (self._eigenvectors, self._eigenvalues)
     
@@ -222,7 +229,7 @@ class ASFEniCSx:
         self.e_boot = [e_max, e_min]
         self.sub_boot = [sub_max, sub_min, sub_mean]
 
-        debug_info(self._debug, f"Bootstrap values calculated")
+        logger.info(f"Bootstrap values calculated")
 
         return [e_max, e_min], [sub_max, sub_min, sub_mean]
     
@@ -265,7 +272,7 @@ class ASFEniCSx:
             ax.plot(range(1, self.k+1), true_eigenvalues[:self.k], marker="o", fillstyle="none", label="True")
         ax.plot(range(1, self.k+1), self._eigenvalues[:self.k], marker="x", fillstyle="none", label="Est")
         if hasattr(self, "e_boot"):
-            debug_info(self._debug, "Plotting bootstrap bounds for eigenvalues")
+            logger.info("Plotting bootstrap bounds for eigenvalues")
             ax.fill_between(range(1, self.k+1), self.e_boot[0][:self.k], self.e_boot[1][:self.k], alpha=0.5, label = "BI")
         plt.yscale("log")
         plt.xlabel("Index")
@@ -299,7 +306,7 @@ class ASFEniCSx:
             ax.plot(range(1, k+1), true_subspace[:k], marker="o", fillstyle="none", label="True")
         ax.plot(range(1, k+1), self.sub_boot[2][:k], marker="x", fillstyle="none", label="Est")
         if hasattr(self, "sub_boot"):
-            debug_info(self._debug, "Plotting bootstrap bounds for subspace distances")
+            logger.info("Plotting bootstrap bounds for subspace distances")
             ax.fill_between(range(1, k+1), self.sub_boot[0][:k], self.sub_boot[1][:k], alpha=0.5, label = "BI")
         plt.xlabel("Subspace Dimension")
         plt.yscale("log")

@@ -1,8 +1,11 @@
+import logging, logging.config
 import numpy as np
 # TODO tabulate_dof_coordinate instead mesh.geometry.x
 
-from ASFEniCSx.utils import debug_info
 from ASFEniCSx.sampling import Sampling
+
+logging.config.fileConfig("logging.conf")
+logger = logging.getLogger('Functional')
 
 class Functional:
     """ Class for constructing a functional, in order to evaluate a function.
@@ -13,7 +16,6 @@ class Functional:
         f (function): Function to be evaluated
     private:
         _number_of_calls (int): Number of calls to the function
-        _debug (bool): If True, debug information will be printed
 
     Methods:
     public:
@@ -39,13 +41,12 @@ class Functional:
     Contributors:
         Niklas Hornischer (nh605@cam.ac.uk)
     """
-    def __init__(self, m : int, f : callable, debug = True) -> None:
+    def __init__(self, m : int, f : callable) -> None:
         """Constructor of the functional class
         
         Args:
             m (int): Dimension of the parameter space
             f (function): Function to be evaluated  
-            debug (bool, optional): If True, debug information will be printed. Default is False
         
         Raises:
             AssertionError: If the dimension of the parameter space is not positive
@@ -56,9 +57,7 @@ class Functional:
         self.m = m
         self.f = f
         self._number_of_calls = 0
-        self._debug = debug
-        debug_info(self._debug, f"New functional object created with pointer {self}")
-            
+
     def number_of_calls(self) -> int:
         """Returns the number of calls to the function
         
@@ -118,7 +117,7 @@ class Functional:
 
         return gradient
 
-    def _finite_differences(self, x : np.ndarray, h = 1e-6, order = 2 **kwargs) -> np.ndarray:
+    def _finite_differences(self, x : np.ndarray, h = 1e-6, order = 2, **kwargs) -> np.ndarray:
         """Calculates the gradient of the interpolant at the given point using finite differences.
 
         Args:
@@ -177,7 +176,6 @@ class Analytical(Functional):
         df (callable): Derivative of the function
     private:
         _number_of_calls (int): Number of calls to the function
-        _debug (bool): Debug flag
     
     Methods:
     public:
@@ -195,7 +193,7 @@ class Analytical(Functional):
         Niklas Hornischer (nh605@cam.ac.uk)
     """
 
-    def __init__(self, m : int, f: callable, df: callable, debug : bool = True) -> None:
+    def __init__(self, m : int, f: callable, df: callable) -> None:
         """
         Constructor for the Analytical class.
         
@@ -208,7 +206,7 @@ class Analytical(Functional):
         Raises:
             AssertionError: If the derivative is not callable
         """
-        super().__init__(m, f, debug = debug)
+        super().__init__(m, f)
 
         assert callable(df), "df must be a callable function"
         self.df = df
@@ -252,7 +250,6 @@ class Interpolation(Functional):
         samples (Sampling): Sampling object that may includes the clusters
     private:
         _number_of_calls (int): Number of calls to the function
-        _debug (bool): If True, debug information will be printed
         _polynomial (callable): Polynomial object that is created after the interpolation
         _derivative (callable): Derivative object that is created after the interpolation
 
@@ -269,9 +266,9 @@ class Interpolation(Functional):
         Niklas Hornischer (nh605@cam.ac.uk)
     """
 
-    def __init__(self, m : int, f : callable, samples : Sampling, debug = True) -> None:
+    def __init__(self, m : int, f : callable, samples : Sampling) -> None:
 
-        super().__init__(m, f, debug)
+        super().__init__(m, f)
         self.samples = samples
 
     def gradient(self, x : np.ndarray) -> np.ndarray:
@@ -317,7 +314,7 @@ class Interpolation(Functional):
         # Calculates the global interpolant
         if not hasattr(self.samples, "_clusters") or not use_clustering:
             exponents = self._create_exponents(order, **kwargs)
-            debug_info (self._debug, f"Calculating global interpolant with order {order} and {len(exponents)} exponents")
+            logger.info(f"Calculating global interpolant with order {order} and {len(exponents)} exponents")
 
             # Obtain the data for the interpolation
             _data = self.samples.samples()[:len(exponents),:]
@@ -343,7 +340,7 @@ class Interpolation(Functional):
                 # Set number of coefficients to the minimum of the elements in the cluster 
                 # and the number of exponents given in **kwargs
                 exponents = self._create_exponents(order,maximal_samples = len(index_list), **kwargs)
-                debug_info (self._debug, f"Calculating local interpolant for cluster {index_list} with order {order} and {len(exponents)} exponents")
+                logger.info(f"Calculating local interpolant for cluster {index_list} with order {order} and {len(exponents)} exponents")
 
                 _data = np.asarray([self.samples.extract(i) for i in index_list])
                 # Check if values have already been calculated
@@ -468,8 +465,8 @@ class Interpolation(Functional):
         return values
 
 class Regression(Functional):
-    def __init__(self, m: int, f: callable, samples : np.ndarray,  debug=True) -> None:
-        super().__init__(m, f, debug=debug)
+    def __init__(self, m: int, f: callable, samples : np.ndarray) -> None:
+        super().__init__(m, f)
         self.samples = samples
 
     
@@ -519,7 +516,7 @@ class Regression(Functional):
         # Calculates the global regressant
         if not hasattr(self.samples, "_clusters") or not use_clustering:
             exponents = self._create_exponents(order)
-            debug_info (self._debug, f"Calculating global regressant with order {order} and {len(exponents)} exponents and {number_of_samples} samples")
+            logger.info(f"Calculating global regressant with order {order} and {len(exponents)} exponents and {number_of_samples} samples")
 
             # Obtain the data for the interpolation
             _data = self.samples.samples()[:number_of_samples,:]
@@ -545,7 +542,7 @@ class Regression(Functional):
                 # Set number of coefficients to the minimum of the elements in the cluster 
                 # and the number of exponents given in **kwargs
                 exponents = self._create_exponents(order)
-                debug_info (self._debug, f"Calculating local regressant for cluster {index_list} with order {order} and {len(exponents)} exponents")
+                logger.info(f"Calculating local regressant for cluster {index_list} with order {order} and {len(exponents)} exponents")
 
                 _data = np.asarray([self.samples.extract(i) for i in index_list])
                 _data = _data[:min(len(index_list), number_of_samples),:]

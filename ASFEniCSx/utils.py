@@ -1,6 +1,9 @@
+import logging, logging.config
 import json
 import numpy as np
-from inspect import currentframe, getframeinfo
+
+logging.config.fileConfig("logging.conf")
+logger = logging.getLogger('Utils')
 
 class NumpyEncoder(json.JSONEncoder):
     """Class for encoding numpy arrays to json
@@ -37,7 +40,6 @@ class NumpyEncoder(json.JSONEncoder):
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
 
-
 def load(filename : str):
     """Loads a sampling object from a json file
     
@@ -56,69 +58,66 @@ def load(filename : str):
     except FileNotFoundError:
         raise FileNotFoundError("File not found")
     data_type = data["_object_type"]
-    if data_type == "sampling":
+    if data_type == "Sampling":
         from ASFEniCSx.sampling import Sampling
         object = Sampling(data["M"], data["m"])
-        object.load(data, overwrite=True)
-    elif data_type=="clustering":
+        logger.info(f"Loading sampling object with M={data['M']} and m={data['m']}")
+        object._load(data, overwrite=True)
+    elif data_type=="Clustering":
         from ASFEniCSx.sampling import Clustering
+        logger.info(f"Loading clustering object with M={data['M']}, m={data['m']}, k={data['k']} and _max_iter={data['_max_iter']}")
         object = Clustering(data["M"], data["m"], data["k"], data["_max_iter"])
-        object.load(data)
+        object._load(data)
     
     return object
 
-def debug_info(debug : bool, message : str):
-    """Prints debug information
-    
-    Prints the given message if the debug flag is set to True
-    
-    Args:
-        message (str): The message to be printed
-    """
-    if debug:
-        frameinfo = getframeinfo(currentframe().f_back)
-        print(f"DEBUG: File \"{frameinfo.filename}\", line {frameinfo.lineno}, module {frameinfo.function} \n\t{message}")    
-
-def normalizer(sample : np.ndarray, bounds : np.ndarray,
-               interval: np.ndarray = np.array([-1., 1.]),
-               debug : bool = False):
+def normalizer(sample: np.ndarray, bounds: np.ndarray or None = None,
+               interval: np.ndarray = np.array([-1., 1.])):
     """Normalizes a sample
     
-    Normalizes a sample to the interval [-1,1] using the bounds
+    Normalizes a sample to the interval [-1, 1] using the bounds
     
     Args:
         sample (np.ndarray): The sample to be normalized. Has either shape (M, m) or (m,).
         bounds (np.ndarray): The bounds used for normalization. Has shape (m, 2).
-        interval (np.ndarray): The interval for normalization, Default [-1., 1.]
+        interval (np.ndarray): The interval for normalization. Default [-1., 1.]
     Returns:
         np.ndarray: The normalized sample
     """
 
-    debug_info(debug, f"Normalizing sample {np.shape(sample)} with bounds {np.shape(bounds)} and interval {np.shape(interval)}")
+    logger.info(f"Normalizing sample shape({np.shape(sample)}) with bounds shape({np.shape(bounds)}) and interval shape({np.shape(interval)})")
+    logger.debug(f"Original sample: \n{sample} with bounds \n{bounds}")
+
+    assert len(sample.shape) <= 2, "Sample has more than 2 dimensions"
 
     # Make sample 2D if it is 1D
     if len(sample.shape) == 1:
         sample = sample.reshape(1, -1)
-    
+
+    if bounds is None:
+        bounds = np.min(sample, axis=0).reshape(1, -1)
+        bounds = np.concatenate((bounds, np.max(sample, axis=0).reshape(1, -1)), axis=0).T
+
     # Check if bounds are valid
-    if bounds.shape[0] != sample.shape[1] or bounds.shape[1]!= 2:
-        raise ValueError(f"Bounds do not match sample dimensions. Have shape {np.shape(bounds)} but should have shape ({sample.shape[1]}, 2)")
-    if np.any(bounds[:, 0] > bounds[:, 1]):
-        raise ValueError("Lower bounds seem to be greater than Upper bounds")
-    
-    # Normalize
-    sample = \
-        (interval[1] - interval[0]) * (sample - bounds[:, 0]) / \
-        (bounds[:, 1] - bounds[:, 0]) + interval[0]
+    assert bounds.shape[0] == sample.shape[1] and bounds.shape[1] == 2, f"Bounds do not match sample dimensions. Have shape {np.shape(bounds)} but should have shape ({sample.shape[1]}, 2)"
+    assert np.all(bounds[:, 0] < bounds[:, 1]), "Lower bounds musst be smaller than Upper bounds"
+
+    # Make interval 2D if it is 1D
+    if len(interval.shape) == 1:
+        interval = interval.reshape(1, -1)
+    assert interval.shape[0] == 1 or interval.shape[0] == bounds.shape[0], f"Interval shape {interval.shape} doesn't match the bounds shape {bounds.shape}"
+
+    sample = (sample - bounds[:, 0]) / (bounds[:, 1] - bounds[:, 0]) * (interval[:, 1] - interval[:, 0]) + interval[:, 0]
 
     # Make sample 1D if it is unnecessary 2D
     if sample.shape[0] == 1:
         sample = sample.reshape(-1)
+
+    logger.debug(f"Normalized sample: \n{sample}")
     return sample
 
 def denormalizer(sample: np.ndarray, bounds: np.ndarray,
-                 interval = np.array([-1., 1.]),
-                 debug : bool = False):
+                 interval = np.array([-1., 1.])):
     """Denormalizes a sample
     
     Denormalizes a sample from the interval using the bounds
@@ -131,8 +130,8 @@ def denormalizer(sample: np.ndarray, bounds: np.ndarray,
         np.ndarray: The unnormalized sample
     """
 
-    debug_info(debug, f"Denormalizing sample {np.shape(sample)} with bounds {np.shape(bounds)} and interval {np.shape(interval)}")
-
+    logger.info(f"Unnormalizing sample shape({np.shape(sample)}) with bounds shape({np.shape(bounds)}) and interval shape({np.shape(interval)})")
+    logger.debug(f"Original sample: \n{sample} with bounds \n{bounds}")
 
     # Make sample 2D if it is 1D
     if len(sample.shape) == 1:
@@ -153,6 +152,8 @@ def denormalizer(sample: np.ndarray, bounds: np.ndarray,
     # Make sample 1D if it is unnecessary 2D
     if sample.shape[0] == 1:
         sample = sample.reshape(-1)
+
+    logger.debug(f"Unormalized sample: \n{sample}")
 
     return sample
 
