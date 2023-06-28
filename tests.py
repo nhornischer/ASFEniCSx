@@ -3,7 +3,7 @@ import os
 import numpy as np
 from ASFEniCSx.utils import normalizer, denormalizer, load
 from ASFEniCSx.sampling import Sampling, Clustering
-from ASFEniCSx.functional import Interpolation, Regression
+from ASFEniCSx.functional import Interpolation, Regression, Functional
 
 dir = os.path.dirname(__file__)
 
@@ -306,87 +306,183 @@ class NonuniformClusteringTest(unittest.TestCase):
         self.assertTrue(np.all(np.asarray(samples._clusters) == self.clusters))
         self.assertTrue(np.allclose(np.asarray(samples._centroids), self.centroids))
 
+class FunctionalTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.m = 2
+        self.function = lambda x: np.sum(x**2)
+        self.derivative = lambda x: 2*x
+
+    def test_functional_evaluation(self):
+        # Tests if the functional evaluation works correctly
+        functional = Functional(self.m, self.function)
+        samples = Sampling(100, self.m)
+        samples.random_uniform()
+
+        test_results = functional.evaluate(samples.samples())
+        test_value = np.random.uniform(-1.0, 1.0, self.m)
+        test_result = functional.evaluate(test_value)
+
+        self.assertTrue(np.shape(test_results) == (100,))
+        self.assertTrue(np.allclose(test_results[20], self.function(samples.extract(20))))
+
+        self.assertTrue(type(test_result) == float)
+        self.assertTrue(np.allclose(test_result, self.function(test_value)))
+
+    def test_functional_finite_differences(self):
+        # Test if the decay of the finite difference error is correct
+        functional = Functional(self.m, self.function) 
+
+        test_value = np.random.uniform(-1.0, 1.0, self.m)
+
+        test_results2 = functional.gradient(test_value, h = 1e-2, order = 1)
+        test_results3 = functional.gradient(test_value, h = 1e-3, order = 1)
+        test_results4 = functional.gradient(test_value, h = 1e-4, order = 1)
+
+        real_result = self.derivative(test_value)
+
+        self.assertTrue(np.allclose((real_result - test_results2)/ (real_result - test_results3), 10, atol=1e-1))
+        self.assertTrue(np.allclose((real_result - test_results3)/ (real_result - test_results4), 10, atol=1e-1))
+
 class InterpolationTest(unittest.TestCase):
     def setUp(self) -> None:
         self.linear_function = lambda x: np.sum(x)
         self.quadratic_function = lambda x: np.sum(x**2)
+        self.linear_function_derivative = lambda x: np.ones(np.shape(x))
+        self.quadratic_function_derivative = lambda x: 2*x
 
     def test_linear_interpolation(self):
         samples = Sampling(100, 10)
         samples.random_uniform()
         samples.assign_values(self.linear_function)
 
+        # Test polynomial
         interpolant = Interpolation(10, self.linear_function, samples)
         interpolant.interpolate(order = 1, use_clustering = False)
         self.assertTrue(np.isclose(samples.values(), interpolant.approximate(samples.samples())).all())
+
+        # Test derivative of the polynomial
+        test_value = np.random.uniform(-1.0, 1.0, 10)
+        test_result = interpolant.gradient(test_value)
+        self.assertTrue(np.allclose(test_result, self.linear_function_derivative(test_value)))
 
     def test_quadratic_interpolation(self):
         samples = Sampling(100, 10)
         samples.random_uniform()
         samples.assign_values(self.quadratic_function)
 
+        # Test polynomial
         interpolant = Interpolation(10, self.quadratic_function, samples)
         interpolant.interpolate(order = 2, use_clustering = False)
         self.assertTrue(np.isclose(samples.values(), interpolant.approximate(samples.samples())).all())
 
+        # Test derivative of the polynomial
+        test_value = np.random.uniform(-1.0, 1.0, 10)
+        test_result = interpolant.gradient(test_value)
+        self.assertTrue(np.allclose(test_result, self.quadratic_function_derivative(test_value)))
+
     def test_linear_interpolation_with_clustering(self):
         samples = Clustering(100, 10, 5)
         samples.random_uniform()
+        samples.detect()
         samples.assign_values(self.linear_function)
 
+        # Test polynomial
         interpolant = Interpolation(10, self.linear_function, samples)
         interpolant.interpolate(order = 1, use_clustering = True)
+        self.assertTrue(len(interpolant._polynomial) == 5)
         self.assertTrue(np.isclose(samples.values(), interpolant.approximate(samples.samples())).all())
+
+        # Test derivative of the polynomial
+        test_value = np.random.uniform(-1.0, 1.0, 10)
+        test_result = interpolant.gradient(test_value)
+        self.assertTrue(np.allclose(test_result, self.linear_function_derivative(test_value)))
+
 
     def test_quadratic_interpolation_with_clustering(self):
-        samples = Clustering(100, 10, 5)
+        samples = Clustering(1000, 10, 5)
         samples.random_uniform()
+        samples.detect()
         samples.assign_values(self.quadratic_function)
 
+        # Test polynomial
         interpolant = Interpolation(10, self.quadratic_function, samples)
         interpolant.interpolate(order = 2, use_clustering = True)
+        self.assertTrue(len(interpolant._polynomial) == 5)
         self.assertTrue(np.isclose(samples.values(), interpolant.approximate(samples.samples())).all())
+
+        # Test derivative of the polynomial
+        test_value = np.random.uniform(-1.0, 1.0, 10)
+        test_result = interpolant.gradient(test_value)
+        self.assertTrue(np.allclose(test_result, self.quadratic_function_derivative(test_value)))
 
 class RegressionTest(unittest.TestCase):
     def setUp(self) -> None:
         self.linear_function = lambda x: np.sum(x)
+        self.linear_function_derivative = lambda x: np.ones(np.shape(x))
         self.quadratic_function = lambda x: np.sum(x**2)
+        self.quadratic_function_derivative = lambda x: 2*x
 
     def test_linear_regression(self):
         samples = Sampling(100, 10)
         samples.random_uniform()
         samples.assign_values(self.linear_function)
 
+        # Test polynomial
         regression = Regression(10, self.linear_function, samples)
-        regression.regression(order = 1, use_clustering = False)
+        regression.regress(order = 1, use_clustering = False)
         self.assertTrue(np.isclose(samples.values(), regression.approximate(samples.samples())).all())
+
+        # Test derivative of the polynomial
+        test_value = np.random.uniform(-1.0, 1.0, 10)
+        test_result = regression.gradient(test_value)
+        self.assertTrue(np.allclose(test_result, self.linear_function_derivative(test_value)))
 
     def test_quadratic_regression(self):
         samples = Sampling(100, 10)
         samples.random_uniform()
         samples.assign_values(self.quadratic_function)
 
+        # Test polynomial
         regression = Regression(10, self.quadratic_function, samples)
-        regression.regression(order = 2, use_clustering = False)
+        regression.regress(order = 2, use_clustering = False)
         self.assertTrue(np.isclose(samples.values(), regression.approximate(samples.samples())).all())
+
+        # Test derivative of the polynomial
+        test_value = np.random.uniform(-1.0, 1.0, 10)
+        test_result = regression.gradient(test_value)
+        self.assertTrue(np.allclose(test_result, self.quadratic_function_derivative(test_value)))
 
     def test_linear_regression_with_clustering(self):
         samples = Clustering(100, 10, 5)
         samples.random_uniform()
+        samples.detect()
         samples.assign_values(self.linear_function)
 
+        # Test polynomial
         regression = Regression(10, self.linear_function, samples)
-        regression.regression(order = 1, use_clustering = True)
+        regression.regress(order = 1, use_clustering = True)
         self.assertTrue(np.isclose(samples.values(), regression.approximate(samples.samples())).all())
+
+        # Test derivative of the polynomial
+        test_value = np.random.uniform(-1.0, 1.0, 10)
+        test_result = regression.gradient(test_value)
+        self.assertTrue(np.allclose(test_result, self.linear_function_derivative(test_value)))
 
     def test_quadratic_regression_with_clustering(self):
-        samples = Clustering(100, 10, 5)
+        samples = Clustering(1000, 10, 5)
         samples.random_uniform()
+        samples.detect()
         samples.assign_values(self.quadratic_function)
 
+        # Test polynomial
         regression = Regression(10, self.quadratic_function, samples)
-        regression.regression(order = 2, use_clustering = True)
+        regression.regress(order = 2, use_clustering = True)
         self.assertTrue(np.isclose(samples.values(), regression.approximate(samples.samples())).all())
+
+        # Test derivative of the polynomial
+        test_value = np.random.uniform(-1.0, 1.0, 10)
+        test_result = regression.gradient(test_value)
+        self.assertTrue(np.allclose(test_result, self.quadratic_function_derivative(test_value)))
 
 if __name__ == '__main__':
     unittest.main()

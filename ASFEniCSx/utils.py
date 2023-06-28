@@ -5,6 +5,9 @@ import numpy as np
 logging.config.fileConfig("logging.conf")
 logger = logging.getLogger('Utils')
 
+"""
+Utils for the Sampling class"""
+
 class NumpyEncoder(json.JSONEncoder):
     """Class for encoding numpy arrays to json
     
@@ -157,6 +160,46 @@ def denormalizer(sample: np.ndarray, bounds: np.ndarray,
 
     return sample
 
+"""
+Utils for the Functional Class
+"""
+def create_polynomial(coefficients : np.ndarray, exponents : np.ndarray) -> callable:
+    """Constructs a multivariate polynomial from the coefficients and exponents of the summands.
+
+    Args:
+        coefficients (numpy.ndarray): Coefficients of the summands
+        exponents (numpy.ndarray): Exponents of the summands
+
+    Returns:
+        function: Multivariate polynomial
+
+    Raises:
+        AssertionError: The number of coefficients and exponents must be equal
+    """
+    assert len(coefficients) == len(exponents), f"The number of coefficients and exponents must be equal, but they are {len(coefficients)} and {len(exponents)} respectively"
+    return lambda x: np.dot([np.prod(np.power(x,exponents[k,:])) for k in range(len(exponents))], coefficients)   
+
+def create_polynomial_derivative(coefficients : np.ndarray, exponents : np.ndarray) -> callable:
+    """Constructs the derivative of a multivariate polynomial from the coefficients and exponents of the summands.
+
+    Args:
+        coefficients (numpy.ndarray): Coefficients of the summands
+        exponents (numpy.ndarray): Exponents of the summands
+
+    Returns:
+        function: Derivative of the multivariate polynomial
+
+    Raises:
+        AssertionError: The number of coefficients and exponents must be equal
+    """
+    assert len(coefficients) == len(exponents), f"The number of coefficients and exponents must be equal, but they are {len(coefficients)} and {len(exponents)} respectively"
+    _dim = len(exponents[0])
+    return lambda x: [np.dot([np.prod(np.power(x[0:k], exponents[j,0:k])) * exponents[j,k]*x[k]**max(exponents[j,k]-1,0) * np.product(np.power(x[k+1:_dim], exponents[j,k+1:_dim])) for j in range(len(coefficients))], coefficients) for k in range(_dim)]  
+
+"""
+Utils for the ASFEniCSx Class
+"""
+
 def evaluate_derivative_interpolation(interpolant : callable,  maximal_order : int, use_clustering : bool, path : str, A_data : np.ndarray, limits = None):
     import matplotlib.pyplot as plt
     import math
@@ -249,7 +292,5 @@ def evaluate_derivative_FD(function, samples, path, A_data, limits = None):
     plt.tight_layout()
     plt.grid()
     plt.savefig(path)
-
-
 
     

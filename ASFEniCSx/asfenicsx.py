@@ -38,12 +38,12 @@ class ASFEniCSx:
         plot_eigenvalues() : Plots the eigenvalues of the covariance matrix
         plot_subspace() : Plots distance of the active subspace using bootstrap
     Example:
-        >>> from ASFEniCSx import ASFEniCSx, Sampling, Functional
+        >>> from ASFEniCSx import ASFEniCSx, Sampling, Analytical
         >>> def f(x): return x[0]**2 + x[1]**2
         >>> def dfdx(x): return [2*x[0], 2*x[1]]
         >>> samples = Sampling(100, 2)
-        >>> function = Functional(2, f)
-        >>> function.get_derivative(dfdx)                           # Optional but sets the derivative of the function to the analytical solution
+        >>> samples.random_uniform()
+        >>> function = Analytical(2, f, dfdx)
         >>> asfenicsx = ASFEniCSx(1, function, samples)
         >>> U, S = asfenicsx.estimation()
 
