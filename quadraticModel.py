@@ -252,7 +252,7 @@ utils.evaluate_derivative_regression(regressant,2 ,False, os.path.join(dir,"cons
 
 # Regression
 func = Regression(m, function, samples)
-func.regression(2, overwrite = True)
+func.regress(2)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -263,7 +263,7 @@ asfenicsx.plot_eigenvalues(true_eigenvalues=1/3*eigenvalues_constant**2, filenam
 asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"constantDecay_subspace_Regression.pdf"), ylim=[1e-6,1])
 
 func = Regression(m, function, samples_regression)
-func.regression(2, overwrite = True)
+func.regress(2)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -279,7 +279,7 @@ grad = lambda x: A_gap @ x
 
 analytical = Analytical(m, function, grad)
 
-# Analyse regression
+# Analyse regress
 A_data = analytical.gradient(samples_regression.samples())
 
 regressant = Regression(m, function, samples_regression)
@@ -288,7 +288,7 @@ utils.evaluate_derivative_regression(regressant,2 ,False, os.path.join(dir,"gap_
 
 # Regression
 func = Regression(m, function, samples)
-func.regression(2, overwrite = True)
+func.regress(2)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -299,7 +299,7 @@ asfenicsx.plot_eigenvalues(true_eigenvalues=1/3*eigenvalues_gap**2, filename=os.
 asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"gap_subspace_Regression.pdf"), ylim=[1e-6,1])
 
 func = Regression(m, function, samples_regression)
-func.regression(2, overwrite = True)
+func.regress(2)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -324,7 +324,7 @@ utils.evaluate_derivative_regression(regressant,2 ,False, os.path.join(dir,"gap2
 
 # Regression
 func = Regression(m, function, samples)
-func.regression(2, overwrite = True)
+func.regress(2)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -335,7 +335,7 @@ asfenicsx.plot_eigenvalues(true_eigenvalues=1/3*eigenvalues_gap2**2, filename=os
 asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"gap2_subspace_Regression.pdf"), ylim=[1e-6,1])
 
 func = Regression(m, function, samples_regression)
-func.regression(2, overwrite = True)
+func.regress(2)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -362,10 +362,9 @@ samples_regression.assign_values(function)
 interpolant = Interpolation(m, function, samples_regression)
 utils.evaluate_derivative_interpolation(interpolant, 2 ,False, os.path.join(dir,"constantDecay_interpolation.pdf"), A_data)
 
-
 # Interpolation
 func = Interpolation(m, function, samples)
-func.interpolate(1, overwrite = True)
+func.interpolate(1)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -375,7 +374,7 @@ for i in range(m-1):
 asfenicsx.plot_eigenvalues(true_eigenvalues=1/3*eigenvalues_constant**2, filename=os.path.join(dir,"eigenvalues_Interpolation_1.pdf"), ylim=[1e-8,1e4])
 asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"subspace_Interpolation_1.pdf"), ylim=[1e-6,1])
 
-func.interpolate(2, overwrite = True)
+func.interpolate(2)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -390,7 +389,7 @@ function = lambda x: 0.5 * x.T @ A_gap @ x
 grad = lambda x: A_gap @ x
 
 analytical = Analytical(m, function, grad)
-samples_regression.assign_values(function, overwrite = True)
+samples_regression.assign_values(function)
 
 # Analyse interpolation
 A_data = analytical.gradient(samples_regression.samples())
@@ -401,7 +400,7 @@ utils.evaluate_derivative_interpolation(interpolant, 2 ,False, os.path.join(dir,
 
 # Interpolation
 func = Interpolation(m, function, samples)
-func.interpolate(1, overwrite = True)
+func.interpolate(1)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -411,7 +410,7 @@ for i in range(m-1):
 asfenicsx.plot_eigenvalues(true_eigenvalues=1/3*eigenvalues_gap**2, filename=os.path.join(dir,"gap_eigenvalues_Interpolation_1.pdf"), ylim=[1e-8,1e4])
 asfenicsx.plot_subspace(true_subspace=sub_error, filename=os.path.join(dir,"gap_subspace_Interpolation_1.pdf"), ylim=[1e-6,1])
 
-func.interpolate(2, overwrite = True)
+func.interpolate(2)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)
@@ -426,7 +425,7 @@ function = lambda x: 0.5 * x.T @ A_gap2 @ x
 grad = lambda x: A_gap2 @ x
 
 analytical = Analytical(m, function, grad)
-samples_regression.assign_values(function, overwrite = True)
+samples_regression.assign_values(function)
 
 # Analyse interpolation
 A_data = analytical.gradient(samples_regression.samples())
@@ -437,7 +436,7 @@ utils.evaluate_derivative_interpolation(interpolant, 2 ,False, os.path.join(dir,
 
 # Interpolation
 func = Interpolation(m, function, samples)
-func.interpolate(1, overwrite = True)
+func.interpolate(1)
 asfenicsx = ASFEniCSx(k, func, samples)
 U_A, S_A = asfenicsx.estimation()
 asfenicsx.bootstrap(100)

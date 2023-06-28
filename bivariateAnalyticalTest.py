@@ -20,9 +20,6 @@ if not os.path.exists("bivariateAnalyticalTestNoise"):
 os.chdir("bivariateAnalyticalTest")
 dir = os.path.join(os.path.dirname(__file__), "bivariateAnalyticalTest")
 
-if not os.path.exists("figures"):
-    os.mkdir("figures")
-
 def evaluate_f(x : list or np.array):
     f = math.exp(0.7 * x[0] + 0.3 * x[1])
     return f
@@ -55,27 +52,15 @@ if __name__ == '__main__':
     plt.arrow(0, 0, 0.7, 0.3, width = 0.02, color = 'r')
     plt.arrow(0.0, 0.0, -0.3, 0.7, width = 0.02, color = 'b')
     plt.tight_layout()
-    plt.savefig("figures/2D_function.pdf")
+    plt.savefig("2D_function.pdf")
     plt.clf()
 
     # Define clustered samples
     samples = Clustering(100, 2, 5)
     samples.random_uniform()
     samples.detect()
-    samples.plot(os.path.join(dir,"figures/2D_samples.pdf"))
+    samples.plot(os.path.join(dir,"2D_samples.pdf"))
     samples.save(os.path.join(dir,"bivariate_samples.json"))
-
-    # Plot clustering of the parameter space
-    plt.figure("Clustering of the parameter space", figsize=(8,6))
-    from matplotlib import colors
-    from matplotlib import cm
-    cmap = plt.get_cmap('hsv')
-    scalarMap = cm.ScalarMappable(colors.Normalize(vmin=0, vmax=samples.k),cmap=cmap)
-    for x in x_range:
-        for y in y_range:
-            plt.plot(x,y,'o', color = scalarMap.to_rgba(samples.obtain_index(np.asarray([x,y]))))
-    plt.tight_layout()
-    plt.savefig(os.path.join(dir,"figures/2D_clustering.pdf"))
     
 
     print("##############################################################Standard Test##############################################################")
@@ -96,21 +81,21 @@ if __name__ == '__main__':
     # Function
     function = Functional(2, evaluate_f)
 
-    utils.evaluate_derivative_FD(function, samples, os.path.join(dir,"figures/derivatives_FD.pdf"), A_data)
+    utils.evaluate_derivative_FD(function, samples, os.path.join(dir,"derivatives_FD.pdf"), A_data)
 
     # Interpolation
     interpolant = Interpolation(2, evaluate_f, samples)
-    utils.evaluate_derivative_interpolation(interpolant, 3, False, os.path.join(dir,"figures/derivatives_I.pdf"), A_data)
+    utils.evaluate_derivative_interpolation(interpolant, 3, False, os.path.join(dir,"derivatives_I.pdf"), A_data)
 
     # Local Interpolation
-    utils.evaluate_derivative_interpolation(interpolant, 3, True, os.path.join(dir,"figures/derivatives_I_local.pdf"), A_data)
+    utils.evaluate_derivative_interpolation(interpolant, 3, True, os.path.join(dir,"derivatives_I_local.pdf"), A_data)
 
     # Regression
     regressant = Regression(2, evaluate_f, samples)
-    utils.evaluate_derivative_regression(regressant, 3, False, os.path.join(dir,"figures/derivatives_R.pdf"), A_data)
+    utils.evaluate_derivative_regression(regressant, 3, False, os.path.join(dir,"derivatives_R.pdf"), A_data)
 
     # Local Regression
-    utils.evaluate_derivative_regression(regressant, 3, True, os.path.join(dir,"figures/derivatives_R_local.pdf"), A_data)
+    utils.evaluate_derivative_regression(regressant, 3, True, os.path.join(dir,"derivatives_R_local.pdf"), A_data)
 
     """
     Active Subspace Construction
@@ -124,22 +109,22 @@ if __name__ == '__main__':
     U_FD, S_FD = asfenicsx.estimation()
     print(f"\tError FD (EV, EW): {np.linalg.norm(U-U_FD)} , {np.linalg.norm(S-S_FD)}")
 
-    interpolant.interpolate(order = 2, overwrite = True, use_clustering = False)
+    interpolant.interpolate(order = 2, use_clustering = False)
     asfenicsx = ASFEniCSx(n, interpolant, samples)
     U_I, S_I = asfenicsx.estimation()
     print(f"\tError I (EV, EW): {np.linalg.norm(U-U_I)} , {np.linalg.norm(S-S_I)}")
 
-    regressant.regression(order = 2, overwrite = True, use_clustering = False)
+    regressant.regress(order = 2, use_clustering = False)
     asfenicsx = ASFEniCSx(n, regressant, samples)
     U_LS, S_LS = asfenicsx.estimation()
     print(f"\tError LS (EV, EW): {np.linalg.norm(U-U_LS)} , {np.linalg.norm(S-S_LS)}")
 
-    interpolant.interpolate(order = 2, overwrite = True, use_clustering = True)
+    interpolant.interpolate(order = 2, use_clustering = True)
     asfenicsx = ASFEniCSx(n, interpolant, samples)
     U_I_local, S_I_local = asfenicsx.estimation()
     print(f"\tError I local (EV, EW): {np.linalg.norm(U-U_I_local)} , {np.linalg.norm(S-S_I_local)}")
 
-    regressant.regression(order = 2, overwrite = True, use_clustering = True)
+    regressant.regress(order = 2, use_clustering = True)
     asfenicsx = ASFEniCSx(n, regressant, samples)
     U_LS_local, S_LS_local = asfenicsx.estimation()
     print(f"\tError LS local (EV, EW): {np.linalg.norm(U-U_LS_local)} , {np.linalg.norm(S-S_LS_local)}")
@@ -189,7 +174,7 @@ if __name__ == '__main__':
     plt.legend(loc='upper left')
     ax = plt.gca()
     ax.set_aspect('equal', adjustable='box')
-    plt.savefig("figures/2D_active_subspace.pdf")
+    plt.savefig("2D_active_subspace.pdf")
     
     plt.figure("Active Subspace Eigenvalues")
     plt.plot(S, 'r', linewidth = 4)
@@ -199,7 +184,7 @@ if __name__ == '__main__':
     plt.plot(S_I_local, 'c')
     plt.plot(S_LS_local, 'm')
     plt.legend(["Analytical", "FD", "Interpolation", "Least Squares", "Local Interpolation", "Local Least Squares"])
-    plt.savefig("figures/2D_active_subspace_eigenvalues.pdf")
+    plt.savefig("2D_active_subspace_eigenvalues.pdf")
     plt.close("all")
 
     '''
@@ -217,7 +202,7 @@ if __name__ == '__main__':
     if not os.path.exists("figures"):
         os.mkdir("figures")
 
-    samples.assign_values(noisy_evaluate_f, overwrite = True)
+    samples.assign_values(noisy_evaluate_f)
 
     """ 
     Perform a validation test of the differentiation methods
@@ -262,7 +247,7 @@ if __name__ == '__main__':
     plt.legend()
     plt.tight_layout()
     plt.grid()
-    plt.savefig(os.path.join(dir,"figures/derivatives_FD.pdf"))
+    plt.savefig(os.path.join(dir,"derivatives_FD.pdf"))
 
     # Interpolation
     interpolant = Interpolation(2, noisy_evaluate_f, samples)
@@ -272,7 +257,7 @@ if __name__ == '__main__':
         number_of_coefficients = range(1, math.comb(2+order, 2))
         I_errors = np.zeros([len(number_of_coefficients), 2])
         for i, n_coef in enumerate(number_of_coefficients):
-            interpolant.interpolate(order = order, number_of_exponents = n_coef, overwrite = True, use_clustering=False)
+            interpolant.interpolate(order = order, number_of_exponents = n_coef, use_clustering=False)
             _data = interpolant.gradient(samples.samples())
             I_errors[i, 0] = np.linalg.norm(A_data-_data)/np.linalg.norm(A_data)
             I_errors[i, 1] = np.max(np.abs(A_data-_data))/np.max(A_data)
@@ -288,7 +273,7 @@ if __name__ == '__main__':
     plt.legend()
     plt.tight_layout()
     plt.grid()
-    plt.savefig(os.path.join(dir,"figures/derivatives_I.pdf"))
+    plt.savefig(os.path.join(dir,"derivatives_I.pdf"))
 
     # Local Interpolation
     interpolant = Interpolation(2, noisy_evaluate_f, samples)
@@ -298,7 +283,7 @@ if __name__ == '__main__':
         number_of_coefficients = range(1, math.comb(2+order, 2))
         I_errors = np.zeros([len(number_of_coefficients), 2])
         for i, n_coef in enumerate(number_of_coefficients):
-            interpolant.interpolate(order = order, number_of_exponents = n_coef, overwrite = True, use_clustering=True)
+            interpolant.interpolate(order = order, number_of_exponents = n_coef, use_clustering=True)
             _data = interpolant.gradient(samples.samples())
             I_errors[i, 0] = np.linalg.norm(A_data-_data)/np.linalg.norm(A_data)
             I_errors[i, 1] = np.max(np.abs(A_data-_data))/np.max(A_data)
@@ -314,7 +299,7 @@ if __name__ == '__main__':
     plt.legend()
     plt.tight_layout()
     plt.grid()
-    plt.savefig(os.path.join(dir,"figures/derivatives_I_local.pdf"))
+    plt.savefig(os.path.join(dir,"derivatives_I_local.pdf"))
 
     # Regression
     regressant = Regression(2, noisy_evaluate_f, samples)
@@ -323,7 +308,7 @@ if __name__ == '__main__':
     for order in range(3, 0, -1):
         R_errors = np.zeros([100, 2])
         for i in range(100):
-            regressant.regression(order = order, number_of_samples = i+1, overwrite = True, use_clustering=False)
+            regressant.regress(order = order, number_of_samples = i+1, use_clustering=False)
             _data = regressant.gradient(samples.samples())
             R_errors[i, 0] = np.linalg.norm(A_data-_data)/np.linalg.norm(A_data)
             R_errors[i, 1] = np.max(np.abs(A_data-_data))/np.max(A_data)
@@ -338,7 +323,7 @@ if __name__ == '__main__':
     plt.legend()
     plt.tight_layout()
     plt.grid()
-    plt.savefig(os.path.join(dir,"figures/derivatives_R.pdf"))
+    plt.savefig(os.path.join(dir,"derivatives_R.pdf"))
 
     # Local Regression
     regressant = Regression(2, noisy_evaluate_f, samples)
@@ -347,7 +332,7 @@ if __name__ == '__main__':
     for order in range(3, 0, -1):
         R_errors = np.zeros([100, 2])
         for i in range(100):
-            regressant.regression(order = order, number_of_samples = i+1, overwrite = True, use_clustering=True)
+            regressant.regress(order = order, number_of_samples = i+1, use_clustering=True)
             _data = regressant.gradient(samples.samples())
             R_errors[i, 0] = np.linalg.norm(A_data-_data)/np.linalg.norm(A_data)
             R_errors[i, 1] = np.max(np.abs(A_data-_data))/np.max(A_data)
@@ -362,7 +347,7 @@ if __name__ == '__main__':
     plt.legend()
     plt.tight_layout()
     plt.grid()
-    plt.savefig(os.path.join(dir,"figures/derivatives_R_local.pdf"))
+    plt.savefig(os.path.join(dir,"derivatives_R_local.pdf"))
     
     
     """
@@ -375,22 +360,22 @@ if __name__ == '__main__':
     U_FD, S_FD = asfenicsx.estimation()
     print(f"\tError FD (EV, EW): {np.linalg.norm(U-U_FD)} , {np.linalg.norm(S-S_FD)}")
 
-    interpolant.interpolate(order = 2, overwrite = True, use_clustering = False)
+    interpolant.interpolate(order = 2, use_clustering = False)
     asfenicsx = ASFEniCSx(n, interpolant, samples)
     U_I, S_I = asfenicsx.estimation()
     print(f"\tError I (EV, EW): {np.linalg.norm(U-U_I)} , {np.linalg.norm(S-S_I)}")
 
-    regressant.regression(order = 2, overwrite = True, use_clustering = False)
+    regressant.regress(order = 2, use_clustering = False)
     asfenicsx = ASFEniCSx(n, regressant, samples)
     U_LS, S_LS = asfenicsx.estimation()
     print(f"\tError LS (EV, EW): {np.linalg.norm(U-U_LS)} , {np.linalg.norm(S-S_LS)}")
 
-    interpolant.interpolate(order = 2, overwrite = True, use_clustering = True)
+    interpolant.interpolate(order = 2, use_clustering = True)
     asfenicsx = ASFEniCSx(n, interpolant, samples)
     U_I_local, S_I_local = asfenicsx.estimation()
     print(f"\tError I local (EV, EW): {np.linalg.norm(U-U_I_local)} , {np.linalg.norm(S-S_I_local)}")
 
-    regressant.regression(order = 2, overwrite = True, use_clustering = True)
+    regressant.regress(order = 2, use_clustering = True)
     asfenicsx = ASFEniCSx(n, regressant, samples)
     U_LS_local, S_LS_local = asfenicsx.estimation()
     print(f"\tError LS local (EV, EW): {np.linalg.norm(U-U_LS_local)} , {np.linalg.norm(S-S_LS_local)}")
@@ -440,7 +425,7 @@ if __name__ == '__main__':
     plt.legend(loc='upper left')
     ax = plt.gca()
     ax.set_aspect('equal', adjustable='box')
-    plt.savefig("figures/2D_active_subspace.pdf")
+    plt.savefig("2D_active_subspace.pdf")
     
     plt.figure("Active Subspace Eigenvalues")
     plt.plot(S, 'r', linewidth = 4)
@@ -450,5 +435,5 @@ if __name__ == '__main__':
     plt.plot(S_I_local, 'c')
     plt.plot(S_LS_local, 'm')
     plt.legend(["Analytical", "FD", "Global Interpolation", "Global Regression", "Local Interpolation", "Local Regression"])
-    plt.savefig("figures/2D_active_subspace_eigenvalues.pdf")
+    plt.savefig("2D_active_subspace_eigenvalues.pdf")
     plt.close("all")

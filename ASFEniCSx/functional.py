@@ -557,7 +557,7 @@ class Regression(Functional):
             if hasattr(self.samples, "_values"):
                 _values = self.samples.values()[:number_of_samples]
             else:
-                _values = self.evaluate(_data)
+                _values = np.asarray(self.evaluate(_data))
 
             coefficients = self._multivariate_regression(_data, _values, _exponents)
             if hasattr(self, "_polynomial"):

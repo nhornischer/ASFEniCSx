@@ -1,18 +1,17 @@
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 
 from ASFEniCSx.sampling import Sampling
-from ASFEniCSx.functional import Functional, Analytical
+from ASFEniCSx.functional import Analytical
 from ASFEniCSx.asfenicsx import ASFEniCSx
-from ASFEniCSx.utils import debug_info, normalizer, denormalizer
 
 dir = os.path.dirname(__file__)
-_debug = True
 
 # Check if directory wingWeight exists if not create it
 if not os.path.exists(os.path.join(dir,"wingWeight")):
     os.makedirs(os.path.join(dir,"wingWeight"))
+os.chdir(os.path.join(dir, 'wingWeight'))
+dir = os.path.join(dir, 'wingWeight')
 
 ##############################################################################################################
 # Define the function of interest and its gradient
@@ -51,7 +50,7 @@ def wing_grad(x):
     dfdSw = (.758*Q/Sw + Wp)
     dfdWfw = (.0035*Q/Wfw)
     dfdA = (.6*Q/A)
-    dfdL = (.9*Q*np.sin(L)/np.cos(L))
+    dfdL = (.9*Q*np.sin(L)/np.cos(L))*np.pi/180.
     dfdq = (.006*Q/q)
     dfdl = (.04*Q/l)
     dfdtc = (-.3*Q/tc)
@@ -74,18 +73,32 @@ M = 1000    # Number of points to sample
 m = 10      # Dimensions of the parameter space
 
 # Sample the input space
-samples = Sampling(M, m, 5)
-samples.set_domainBounds(np.array([[150, 200], [220, 300], [6,10], [-10, 10], [16, 45], [.5, 1], [.08, .18], [2.5, 6], [1700, 2500], [.025, .08]]))
+samples = Sampling(M, m)
+bounds = np.array([[150, 200], [220, 300], [6,10], [-10, 10], [16, 45], [.5, 1], [.08, .18], [2.5, 6], [1700, 2500], [.025, .08]])
+samples.set_domainBounds(bounds)
 samples.random_uniform()
+
+# Overload the samples with the sampling data from the real results
+samples._array = np.load("samples.npy")
 
 func = Analytical(m, wing, wing_grad)
 
 asfenicsx = ASFEniCSx(m, func, samples)
-asfenicsx.estimation()
-asfenicsx.bootstrap(100)
+asfenicsx.evaluate_gradients()
 
-asfenicsx.plot_eigenvalues(os.path.join(dir,"wingWeight","analytical_eigenvalues.pdf"))
-asfenicsx.plot_subspace(os.path.join(dir,"wingWeight","analytical_subspace.pdf"))
-asfenicsx.plot_eigenvectors(os.path.join(dir,"wingWeight","analytical_eigenvectors.pdf"), n = 2)
+asfenicsx.estimation()
+
+asfenicsx.bootstrap(500)
+
+asfenicsx.plot_eigenvalues(os.path.join(dir,"analytical_eigenvalues.pdf"))
+asfenicsx.plot_subspace(os.path.join(dir,"analytical_subspace.pdf"))
+asfenicsx.plot_eigenvectors(os.path.join(dir,"analytical_eigenvectors.pdf"), n = 2)
 asfenicsx.partition(2)
-asfenicsx.plot_sufficient_summary(os.path.join(dir,"wingWeight","analytical_sufficient_summary"))
+asfenicsx.plot_sufficient_summary(os.path.join(dir,"analytical_sufficient_summary"))
+
+# Comparison of the results
+real_eigenvalues = np.load("eigenvalues.npy").reshape(1,-1)
+real_eigenvectors = np.load("eigenvectors.npy")
+print(f"Maximal absolute derivation in the eigenvalues: {np.max(np.abs(real_eigenvalues - asfenicsx._eigenvalues))}")
+print(f"Maximal absolute derivation in the eigenvectors: {np.max(np.abs(real_eigenvectors - asfenicsx._eigenvectors))}")
+

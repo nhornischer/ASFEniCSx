@@ -200,6 +200,30 @@ def create_polynomial_derivative(coefficients : np.ndarray, exponents : np.ndarr
 Utils for the ASFEniCSx Class
 """
 
+def gradient_normalisation(gradients : np.ndarray, bounds : np.ndarray, interval = np.array([-1., 1.])):
+    """Normalizes the gradients of a sample
+
+    Normalizes the gradients of a sample from the interval using the bounds
+
+    Args:
+        gradients (np.ndarray): The gradients to be normalized. Has either shape (M, m, d) or (m, d).
+        bounds (np.ndarray): The bounds used for normalization. Has shape (m, 2). 
+        interval (np.ndarray): Scaling interval. Default [-1., 1.].
+
+    Returns:
+        np.ndarray: The normalized gradients
+    """
+
+    logger.info(f"Normalizing gradients shape({np.shape(gradients)}) with bounds shape({np.shape(bounds)}) and interval shape({np.shape(interval)})")
+    logger.debug(f"Original gradients: \n{gradients} with bounds \n{bounds}")
+
+    # Normalize
+    gradients = gradients * (bounds[:, 1] - bounds[:, 0]) / (interval[1] - interval[0])
+
+    logger.debug(f"Normalized gradients: \n{gradients}")
+
+    return gradients
+
 def evaluate_derivative_interpolation(interpolant : callable,  maximal_order : int, use_clustering : bool, path : str, A_data : np.ndarray, limits = None):
     import matplotlib.pyplot as plt
     import math
@@ -212,7 +236,7 @@ def evaluate_derivative_interpolation(interpolant : callable,  maximal_order : i
         number_of_coefficients = range(1, math.comb(m+order, m))
         I_errors = np.zeros([len(number_of_coefficients), 2])
         for i, n_coef in enumerate(number_of_coefficients):
-            interpolant.interpolate(order = order, number_of_exponents = n_coef, overwrite = True, use_clustering = use_clustering)
+            interpolant.interpolate(order = order, number_of_exponents = n_coef, use_clustering = use_clustering)
             _data = interpolant.gradient(samples.samples())
             I_errors[i, 0] = np.mean(np.linalg.norm(A_data-_data, axis=1)/np.linalg.norm(A_data, axis=1))
             I_errors[i, 1] = np.mean(np.max(np.abs(A_data-_data), axis=1)/np.max(A_data, axis=1))
@@ -238,15 +262,15 @@ def evaluate_derivative_regression(regressant : callable, maximal_order : int,  
     plt.figure(figsize=(8,6))
     colors = ["r", "b", "g", "k"]
     for order in range(maximal_order, 0, -1):
-        R_errors = np.zeros([M, 2])
-        for i in range(M):
-            regressant.regression(order = order, number_of_samples = i+1, overwrite = True, use_clustering = use_clustering)
+        R_errors = np.zeros([M-samples.m, 2])
+        for i in range(M-samples.m):
+            regressant.regress(order = order, number_of_samples = i+samples.m, use_clustering = use_clustering)
             _data = regressant.gradient(samples.samples())
             R_errors[i, 0] = np.mean(np.linalg.norm(A_data-_data, axis=1)/np.linalg.norm(A_data, axis=1))
             R_errors[i, 1] = np.mean(np.max(np.abs(A_data-_data), axis=1)/np.max(A_data, axis=1))
 
-        plt.plot(range(1, M+1), R_errors[:,0],color= colors[order-1], label = str(order)+"-order")
-        plt.plot(range(1, M+1), R_errors[:,1],color= colors[order-1], linestyle = "dotted")
+        plt.plot(range(samples.m, M), R_errors[:,0],color= colors[order-1], label = str(order)+"-order")
+        plt.plot(range(samples.m, M), R_errors[:,1],color= colors[order-1], linestyle = "dotted")
     plt.xlabel(r'$n_{samples}$')
     plt.yscale('log')
     plt.xscale('log')

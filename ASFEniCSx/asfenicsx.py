@@ -3,6 +3,7 @@ import numpy as np
 
 from ASFEniCSx.sampling import Sampling
 from ASFEniCSx.functional import Functional
+import ASFEniCSx.utils as utils
 
 import tqdm.autonotebook
 
@@ -101,11 +102,13 @@ class ASFEniCSx:
             progress.close()
         self.gradients = gradients
 
-        # Normalize the gradients accroding to the chain rule with the bounds from the sampling space to the range [-1, 1]
+        # Normalize the gradients according to the chain rule with the bounds from the sampling space to the range [-1, 1]
         if hasattr(self.samples, '_bounds'):
+            logger.info("Normalizing gradients")
             for i in range(self.samples.M):
-                for j in range(self.samples.m):
-                    gradients[i,j] = gradients[i,j] * (self.samples._bounds[j,1] - self.samples._bounds[j,0]) / 2
+                gradients[i,:] = utils.gradient_normalisation(gradients[i,:], self.samples._bounds)
+        else:
+            logger.warning("No bounds found in the sampling object. Gradients are not normalized.")
         return gradients
 
     def covariance(self, gradients : np.ndarray):
@@ -120,18 +123,9 @@ class ASFEniCSx:
         Returns:
             np.ndarray: Approximated covariance matrix with dimensions m x m    
         """
-        covariance = np.zeros([self.samples.m, self.samples.m])
-        if logging.INFO >= logger.level:
-            logger.info("Constructing the covariance matrix")
-            progress = tqdm.autonotebook.tqdm(total=self.samples.M, desc="Constructing Covariance Matrix", leave=True)
-        for i in range(self.samples.M):
-            covariance += np.outer(gradients[i,:], gradients[i,:])
-            if logging.INFO >= logger.level:
-                progress.update(1)
-        if logging.INFO >= logger.level:
-            progress.close()
-        covariance = covariance / self.samples.M
+        weights = np.ones((self.samples.M, 1))/self.samples.M
 
+        covariance = np.dot(gradients.T, gradients * weights)
         return covariance
     
     def estimation(self):
@@ -206,7 +200,7 @@ class ASFEniCSx:
 
         # Loop over the number of bootstrap samples
         eigenvalues = np.zeros([self.samples.m, M_boot])
-        subspace_distances = np.zeros([self.samples.m, M_boot])
+        subspace_distances = np.zeros([self.samples.m-1, M_boot])
         for i in range(M_boot):
             # Construct bootstrap replicate
             bootstrap_indices = np.random.randint(0, self.samples.M, size = self.samples.M)
@@ -245,7 +239,7 @@ class ASFEniCSx:
         """
         e, W = np.linalg.eigh(matrix)
         e = abs(e)
-        idx = e.argsort()[::-1]
+        idx = np.argsort(e)[::-1]
         e = e[idx]
         W = W[:,idx]
         normalization = np.sign(W[0,:])
@@ -325,7 +319,7 @@ class ASFEniCSx:
         if not hasattr(self, "W1"):
             raise("The active subspace is not defined. If the eigenpairs of the covariance matrix are already calculated, call partition() first.")
         
-        active_variable_values = self.samples.normalized_samples().dot(self.W1)
+        active_variable_values = utils.normalizer(self.samples.samples(),self.samples._bounds).dot(self.W1)
         if hasattr(self.samples, "_values"):
             values = self.samples.values()
         else:

@@ -1,9 +1,6 @@
 *.pyc
-figures/
 *.DS_Store
 *.h5
 *.xdmf
 *.png
 *.pdf
-*.json
-test_data/
