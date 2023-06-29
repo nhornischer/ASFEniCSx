@@ -23,9 +23,10 @@ class Functional:
         number_of_calls() -> int: Returns the number of calls to the function
         reset_number_of_calls(): Resets the number of calls to the function
         evaluate(x : numpy.ndarrray) -> float or numpy.ndarray: Evaluates the function at the point x
-        gradient(x : numpy.ndarray) -> numpy.ndarray: Calculates the gradient of the function at the point x
+        gradient(x : numpy.ndarray, method : str) -> numpy.ndarray: Calculates the gradient of the function at the point x
     private:
         _finite_differences(x : numpy.ndarray, h : float, order : int) -> numpy.ndarray: Calculates the finite difference of the function at the point x
+        _complex_step_method(x : numpy.ndarray, h : float) -> numpy.ndarray: Calculates the gradient of the function at the point x using the complex step method
 
     Example:
         >>> def f(x): return x[0]**2 + x[1]**2
@@ -199,7 +200,7 @@ class Functional:
                 raise ValueError(f"No implemented order of finite differences. Given order: {order}")
         return dfdx
     
-    def _complex_step_method(self, x : np.ndarray, h = 1e-6) -> np.ndarray:
+    def _complex_step_method(self, x : np.ndarray, h = 1e-16) -> np.ndarray:
         """Calculates the gradient of the interpolant at the given point using the complex step method.
 
         Args:
