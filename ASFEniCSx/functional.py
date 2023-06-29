@@ -85,20 +85,30 @@ class Functional:
         Raises:
             AssertionError: If the dimension of x does not match the dimension of the parameter space
         """
+        if type(x) != np.ndarray:
+            x = np.array([x])
         if len(x.shape) == 1:
             x = x.reshape(1, -1)
 
         assert x.shape[1] == self.m, "x must be of dimension m"
 
-        evaluations= np.zeros(x.shape[0])
+        evaluations= np.zeros(x.shape[0], dtype = x.dtype)
         for i in range(x.shape[0]):
-            evaluations[i] = self.f(x[i,:])
+            _value = self.f(x[i,:])
+            if _value.dtype != x.dtype:
+                logger.warning(f"Function returns value of different datatype. Converting from {_value.dtype} to {x.dtype}")
+            evaluations[i] = _value
         self._number_of_calls += x.shape[0]
+        logger.debug(f"Datatype of the input : {x.dtype}, datatype of the output : {evaluations.dtype}")
         if evaluations.shape[0] == 1:
-            evaluations = float(evaluations.reshape(-1)[0])
+            logger.debug(f"Converting array of shape {evaluations.shape} to float")
+            if x.dtype == np.float64:
+                evaluations = float(evaluations.reshape(-1)[0])
+            elif x.dtype == np.complex128:
+                evaluations = complex(evaluations.reshape(-1)[0])
         return evaluations
 
-    def gradient(self, x : np.ndarray, **kwargs) -> np.ndarray:
+    def gradient(self, x : float or np.ndarray,  method = 'FD', **kwargs) -> np.ndarray:
         """Calculates the gradient of the function at the given point/points using finite differences.
 
         Args:
@@ -115,6 +125,8 @@ class Functional:
         Raises:
             AssertionError: If the dimension of the point is not equal to the dimension of the function
         """
+        if type(x) != np.ndarray:
+            x = np.array([x])
         if len(x.shape) == 1:
             x = x.reshape(1, -1)
 
@@ -122,10 +134,20 @@ class Functional:
 
         gradient = np.zeros((x.shape[0], self.m))
         for i in range(x.shape[0]):
-            gradient[i,:] = self._finite_differences(x[i,:], **kwargs)
+            if method == 'FD':
+                gradient[i,:] = self._finite_differences(x[i,:], **kwargs)
+            if method == 'CSM':
+                gradient[i,:] = self._complex_step_method(x[i,:], **kwargs)
 
         if gradient.shape[0] == 1:
             gradient = gradient.reshape(-1)
+
+        if gradient.shape[0] == 1:
+            logger.debug(f"Converting array of shape {gradient.shape} to float")
+            if x.dtype == np.float64:
+                gradient = float(gradient.reshape(-1)[0])
+            elif x.dtype == np.complex128:
+                gradient = complex(gradient.reshape(-1)[0])
 
         return gradient
 
@@ -140,10 +162,8 @@ class Functional:
             np.ndarray: Gradient of the interpolant at the given point
 
         Raises:
-            AssertionError: If the dimension of the point is not equal to the dimension of the functional
             AssertionError: If the step size is not positive
         """
-        assert len(x)==self.m, "x must have dimension m"
         assert h>0, "h must be positive" 
 
         #TODO: Check central finite differences. The error does not decrease with h^2.
@@ -177,6 +197,30 @@ class Functional:
                 x[i] -= h
             else:
                 raise ValueError(f"No implemented order of finite differences. Given order: {order}")
+        return dfdx
+    
+    def _complex_step_method(self, x : np.ndarray, h = 1e-6) -> np.ndarray:
+        """Calculates the gradient of the interpolant at the given point using the complex step method.
+
+        Args:
+            x (numpy.ndarray): Point at which the gradient is calculated
+            h (float, optional): Step size for the complex. Defaults to 1e-6.
+        Returns:
+            np.ndarray: Gradient of the interpolant at the given point
+
+        Raises:
+            AssertionError: If the step size is not positive
+        """
+        assert h>0, "h must be positive" 
+        
+        # Convert x to complex
+        x = np.asarray(x, dtype=np.complex128)
+        dfdx = np.zeros(self.m)
+        for i in range(self.m):
+            x[i] += h*1j
+            f_1 = self.evaluate(x)
+            dfdx[i] = f_1.imag / h
+            x[i] -= h*1j
         return dfdx
     
 class Analytical(Functional):
